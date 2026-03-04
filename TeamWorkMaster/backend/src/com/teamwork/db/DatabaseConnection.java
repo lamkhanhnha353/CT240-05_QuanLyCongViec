@@ -22,7 +22,7 @@ public class DatabaseConnection {
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "1234";
+    private final String PASSWORD = "20022005nha@";
 
     // 2. Constructor được set là 'private' để các class khác không thể dùng từ khóa
     // 'new'
