@@ -1,16 +1,17 @@
 package com.teamwork.db;
 
+import com.teamwork.core.GlobalExceptionHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import com.teamwork.core.GlobalExceptionHandler;
 
 /**
- * Lớp quản lý kết nối cơ sở dữ liệu MySQL.
- * Áp dụng Mẫu thiết kế Singleton (Singleton Design Pattern)
- * để đảm bảo toàn bộ hệ thống chỉ dùng chung 1 kết nối duy nhất.
+ * Lớp quản lý kết nối cơ sở dữ liệu MySQL. Áp dụng Mẫu thiết kế Singleton
+ * (Singleton Design Pattern) để đảm bảo toàn bộ hệ thống chỉ dùng chung 1 kết
+ * nối duy nhất.
  */
 public class DatabaseConnection {
+
     // 1. Biến static lưu trữ thể hiện (instance) duy nhất của class này
     private static DatabaseConnection instance;
     private Connection connection;
@@ -22,7 +23,7 @@ public class DatabaseConnection {
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "20022005nha@";
+    private final String PASSWORD = "tmk1206";
 
     // 2. Constructor được set là 'private' để các class khác không thể dùng từ khóa
     // 'new'

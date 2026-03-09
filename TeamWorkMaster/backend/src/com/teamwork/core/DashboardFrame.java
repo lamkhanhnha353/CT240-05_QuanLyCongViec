@@ -2,18 +2,18 @@ package com.teamwork.core;
 
 import com.teamwork.contract.IHostContext;
 import com.teamwork.contract.IPlugin;
-import com.teamwork.kernel.PluginLoader;
 import com.teamwork.db.DatabaseConnection;
-
-import javax.swing.*;
+import com.teamwork.kernel.PluginLoader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
+import javax.swing.*;
 
 /**
  * Container chính của hệ thống (Đóng vai trò là Bảng điều khiển Server).
  */
 public class DashboardFrame extends JFrame implements IHostContext {
+
     private JTextArea logArea;
     private PluginLoader pluginLoader;
 
@@ -107,7 +107,6 @@ public class DashboardFrame extends JFrame implements IHostContext {
             log("[HỆ THỐNG] Lệnh gọi DatabaseConnection đã thực thi xong.");
         });
 
-        
         // Sự kiện: Bật API Server
         itemStartApi.addActionListener(e -> {
             try {
