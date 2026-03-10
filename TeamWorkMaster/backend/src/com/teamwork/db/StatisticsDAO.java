@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 
 public class StatisticsDAO {
 
+    // Thống kê số lượng công việc theo trạng thái
     public void countTaskByStatus() {
 
         String sql = "SELECT Status, COUNT(*) AS Total FROM TBL_TASKS GROUP BY Status";
@@ -28,15 +29,5 @@ public class StatisticsDAO {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    // Hàm main để test nhanh
-    public static void main(String[] args) {
-
-        System.out.println("=== THONG KE CONG VIEC ===");
-
-        StatisticsDAO dao = new StatisticsDAO();
-        dao.countTaskByStatus();
-
     }
 }
