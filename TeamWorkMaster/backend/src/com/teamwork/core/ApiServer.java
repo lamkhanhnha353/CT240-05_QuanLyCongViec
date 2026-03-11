@@ -16,28 +16,23 @@ public class ApiServer {
 
     public ApiServer(int port) throws IOException {
         userDAO = new UserDAO();
-        // Mở cổng mạng (Ví dụ: 8080)
         server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        // Tạo đường dẫn API (Endpoint) cho chức năng Đăng nhập & Đăng ký
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
+        server.createContext("/api/admin/users/create", new AdminCreateUserHandler());
+        server.createContext("/api/admin/users", new AdminGetUsersHandler());
+        server.createContext("/api/admin/users/update", new AdminUpdateUserHandler());
 
-        server.setExecutor(null); // Sử dụng luồng mặc định
+        server.setExecutor(null);
     }
 
     public void start() {
         server.start();
         System.out.println("[API SERVER] Da khoi dong thanh cong tren cong " + server.getAddress().getPort());
-        System.out.println("[API SERVER] Dang lang nghe yeu cau tu Web Vue.js...");
+        System.out.println("[API SERVER] Dang lang nghe yeu cau tu Web...");
     }
 
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
     class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -52,43 +47,29 @@ public class ApiServer {
 
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Dang xu ly Dang nhap: " + requestBody);
-
-                String username = "";
-                String password = "";
                 try {
-                    // Cắt chuỗi giống hệt bên Đăng ký để đảm bảo không bao giờ lỗi
-                    username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
+
+                    String role = userDAO.login(username, password);
+
+                    if ("BANNED".equals(role)) {
+                        sendResponse(exchange, 403,
+                                "{\"success\": false, \"message\": \"Tài khoản của bạn đã bị khóa!\"}");
+                    } else if (role != null) {
+                        sendResponse(exchange, 200, "{\"success\": true, \"role\": \"" + role
+                                + "\", \"message\": \"Đăng nhập thành công\"}");
+                    } else {
+                        sendResponse(exchange, 401,
+                                "{\"success\": false, \"message\": \"Sai tài khoản hoặc mật khẩu!\"}");
+                    }
                 } catch (Exception e) {
-                    System.err.println("[LỖI CẮT CHUỖI JSON]: " + e.getMessage());
-                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu khong hop le\"}");
-                    return;
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
                 }
-
-                // In ra xem Java thực sự đọc được chữ gì
-                System.out.println("[API SERVER] Username doc duoc: [" + username + "]");
-                System.out.println("[API SERVER] Password doc duoc: [" + password + "]");
-
-                boolean isValid = userDAO.login(username, password);
-
-                String responseJson;
-                if (isValid) {
-                    responseJson = "{\"success\": true, \"message\": \"Dang nhap thanh cong\"}";
-                } else {
-                    responseJson = "{\"success\": false, \"message\": \"Sai tai khoan hoac mat khau\"}";
-                }
-
-                sendResponse(exchange, 200, responseJson);
-            } else {
-                sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phuong thuc khong ho tro\"}");
             }
         }
     }
 
-    // ==========================================
-    // 2. LỚP XỬ LÝ ĐĂNG KÝ (/api/register)
-    // ==========================================
     class RegisterHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -103,8 +84,6 @@ public class ApiServer {
 
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Nhan yeu cau dang ky...");
-
                 try {
                     String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
                     String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
@@ -112,25 +91,136 @@ public class ApiServer {
                     String email = requestBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
 
                     boolean isSuccess = userDAO.register(username, password, fullName, email);
-
                     if (isSuccess) {
-                        sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Dang ky thanh cong\"}");
+                        sendResponse(exchange, 200, "{\"success\": true}");
                     } else {
                         sendResponse(exchange, 400,
-                                "{\"success\": false, \"message\": \"Tai khoan hoac email da ton tai\"}");
+                                "{\"success\": false, \"message\": \"Tài khoản hoặc email đã tồn tại\"}");
                     }
                 } catch (Exception e) {
-                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu gui len khong hop le\"}");
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
                 }
-            } else {
-                sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phuong thuc khong ho tro\"}");
+            }
+        }
+    }
+
+    class AdminGetUsersHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            if ("GET".equals(exchange.getRequestMethod())) {
+                sendResponse(exchange, 200, userDAO.getAllMembersJson());
             }
         }
     }
 
     // ==========================================
-    // 3. HÀM HỖ TRỢ GỬI PHẢN HỒI (Dùng chung)
+    // API TẠO TÀI KHOẢN (ĐÃ FIX LỖI CORS)
     // ==========================================
+    class AdminCreateUserHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            // 3 DÒNG NÀY RẤT QUAN TRỌNG ĐỂ KHÔNG BỊ "LỖI KẾT NỐI SERVER JAVA"
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("POST".equals(exchange.getRequestMethod())) {
+                String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                try {
+                    String username = reqBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String fullname = reqBody.split("\"fullname\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String email = reqBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String password = reqBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
+
+                    // Hàm này gọi qua UserDAO.java của bạn (đã code kiểm tra trùng)
+                    int result = userDAO.addUserByAdmin(username, password, fullname, email);
+
+                    if (result == 1) {
+                        sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Tạo tài khoản thành công!\"}");
+                    } else if (result == -1) {
+                        // Báo lỗi trùng Username
+                        sendResponse(exchange, 400,
+                                "{\"success\": false, \"field\": \"username\", \"message\": \"Tên tài khoản (Username) đã tồn tại trong hệ thống!\"}");
+                    } else if (result == -2) {
+                        // Báo lỗi trùng Email
+                        sendResponse(exchange, 400,
+                                "{\"success\": false, \"field\": \"email\", \"message\": \"Email này đã được đăng ký cho một tài khoản khác!\"}");
+                    } else {
+                        sendResponse(exchange, 500, "{\"success\": false, \"message\": \"Lỗi CSDL không xác định!\"}");
+                    }
+                } catch (Exception e) {
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
+                }
+            }
+        }
+    }
+
+    // ==========================================
+    // API CẬP NHẬT TÀI KHOẢN (ĐÃ FIX LỖI CORS)
+    // ==========================================
+    // ==========================================
+    // API CẬP NHẬT TÀI KHOẢN (ĐÃ BỎ PASS CŨ)
+    // ==========================================
+    class AdminUpdateUserHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("POST".equals(exchange.getRequestMethod())) {
+                String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                try {
+                    String idStr = reqBody.split("\"id\"\\s*:\\s*")[1].split("[,}]")[0].trim();
+                    int id = Integer.parseInt(idStr);
+                    String fullname = reqBody.split("\"fullname\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String email = reqBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
+
+                    String password = "";
+
+                    // Chỉ lấy mật khẩu mới nếu có
+                    if (reqBody.contains("\"password\"")) {
+                        String[] split = reqBody.split("\"password\"\\s*:\\s*\"");
+                        if (split.length > 1 && split[1].startsWith("\""))
+                            password = split[1].split("\"")[1];
+                    }
+
+                    // Gọi hàm update không có oldPassword
+                    int result = userDAO.updateUser(id, fullname, email, password);
+
+                    if (result == 1) {
+                        sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Cập nhật thành công!\"}");
+                    } else if (result == -2) {
+                        sendResponse(exchange, 400,
+                                "{\"success\": false, \"field\": \"email\", \"message\": \"Email này đang được một người khác sử dụng!\"}");
+                    } else {
+                        sendResponse(exchange, 500, "{\"success\": false, \"message\": \"Lỗi Database\"}");
+                    }
+                } catch (Exception e) {
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
+                }
+            }
+        }
+    }
+
     private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");

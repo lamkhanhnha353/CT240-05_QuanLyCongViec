@@ -1,74 +1,110 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-900 font-sans">
-    <div class="max-w-md w-full bg-white p-10 rounded-3xl shadow-2xl border-t-8 border-blue-600">
-      <div class="text-center mb-10">
-        <h1 class="text-3xl font-black text-slate-800 tracking-tighter">TEAMWORK MASTER</h1>
-        <div class="h-1 w-20 bg-blue-600 mx-auto mt-2 rounded-full"></div>
-        <p class="text-slate-400 mt-3 text-xs uppercase font-bold tracking-widest">Core Dashboard v1.0</p>
+  <div class="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 font-sans">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-10 relative overflow-hidden">
+      
+      <!-- Viền xanh trên cùng của thẻ -->
+      <div class="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
+
+      <!-- Tiêu đề -->
+      <div class="text-center mb-10 mt-2">
+        <h1 class="text-3xl font-black text-slate-800 uppercase tracking-wider">TEAMWORK MASTER</h1>
+        <div class="flex flex-col items-center mt-3">
+          <div class="w-12 h-1 bg-blue-600 rounded-full mb-3"></div>
+          <p class="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">CORE DASHBOARD V1.0</p>
+        </div>
       </div>
-
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      
+      <!-- Form Đăng nhập -->
+      <form @submit.prevent="handleLogin" class="space-y-6">
+        
         <div>
-          <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Tai khoan</label>
-          <input v-model="username" type="text" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none ring-2 ring-slate-100 focus:ring-blue-500 outline-none transition-all text-slate-700 font-bold" placeholder="admin">
+          <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">TÀI KHOẢN</label>
+          <input 
+            v-model="username" 
+            type="text" 
+            placeholder="Nhập tên tài khoản..."
+            class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-bold"
+          >
         </div>
-
+        
         <div>
-          <label class="block text-xs font-black text-slate-500 uppercase mb-2 ml-1">Mat khau</label>
-          <input v-model="password" type="password" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border-none ring-2 ring-slate-100 focus:ring-blue-500 outline-none transition-all text-slate-700 font-bold" placeholder="••••••••">
+          <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">MẬT KHẨU</label>
+          <input 
+            v-model="password" 
+            type="password" 
+            placeholder="••••••"
+            class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-bold tracking-widest"
+          >
         </div>
-
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 uppercase tracking-widest text-sm">
-          Dang Nhap He Thong
+        
+        <button 
+          type="submit" 
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm py-4 rounded-2xl shadow-lg shadow-blue-500/40 transition-all uppercase tracking-widest mt-2 active:scale-95"
+        >
+          ĐĂNG NHẬP HỆ THỐNG
         </button>
       </form>
-
-      <div class="mt-6 text-center">
-        <button @click="$router.push('/register')" type="button" class="text-sm font-bold text-slate-400 hover:text-blue-500 transition-colors">
-          Chưa có tài khoản? Đăng ký ngay
-        </button>
+      
+      <!-- Footer -->
+      <div class="mt-8 pt-8 border-t border-slate-100 text-center">
+        <p class="text-slate-500 font-semibold text-sm">
+          Chưa có tài khoản? 
+          <router-link to="/register" class="text-blue-600 hover:text-blue-800 transition-colors">Đăng ký ngay</router-link>
+        </p>
+        <p class="text-slate-300 font-bold text-[10px] uppercase tracking-widest mt-8">
+          © 2026 DEVELOPER TEAM
+        </p>
       </div>
-
-      <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-        <span class="text-[10px] font-bold text-slate-300 uppercase tracking-widest">© 2026 Developer Team</span>
-      </div>
+      
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
-import { useRouter } from 'vue-router' // 1. Import hàm chuyển trang
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const username = ref('')
 const password = ref('')
-const router = useRouter() // 2. Khởi tạo router
 
 const handleLogin = async () => {
+  if (!username.value || !password.value) {
+    alert("Vui lòng điền đầy đủ Tài khoản và Mật khẩu!");
+    return;
+  }
+  
   try {
-    const response = await axios.post('http://localhost:8080/api/login', {
-      username: username.value,
-      password: password.value
+    const response = await fetch('http://localhost:8080/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        username: username.value, 
+        password: password.value 
+      })
     });
-
-    if (response.data.success) {
-      alert("Đăng nhập thành công!");
-      
-      // Phát vé: Lưu trạng thái và tên tài khoản vào bộ nhớ trình duyệt
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Lưu Token giả lập vào LocalStorage
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('username', username.value);
+      localStorage.setItem('role', data.role); // Data.role từ Java gửi sang
       
-      // Chuyển hướng sang trang Dashboard
-      router.push('/dashboard'); 
-    }
-    
-    else {
-      alert("Tài khoản hoặc mật khẩu không chính xác!");
+      // Chuyển hướng theo Quyền (Role)
+      if (data.role === 'ADMIN') {
+        router.push('/admin'); // Admin thì ném vào Tổng hành dinh
+      } else {
+        router.push('/dashboard'); // Member thì vào Bảng chung
+      }
+    } else {
+      // Hiển thị thông báo khi sai pass hoặc bị khóa
+      alert(data.message);
     }
   } catch (error) {
-    console.error("Lỗi kết nối Server:", error);
-    alert("Không thể kết nối đến Backend. Bạn đã bật Server Java chưa?");
+    alert("Không thể kết nối đến Máy chủ Java! Vui lòng kiểm tra lại Backend.");
+    console.error(error);
   }
 }
 </script>
