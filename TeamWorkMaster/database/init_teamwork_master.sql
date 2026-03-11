@@ -28,7 +28,26 @@ CREATE TABLE IF NOT EXISTS TBL_PROJECTS (
     FOREIGN KEY (CreatedBy) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Tạo bảng Công việc (Tasks)
+-- 4. Tạo bảng Thành viên của Dự án (Project Members)
+-- Bảng này dùng để quản lý danh sách người tham gia trong mỗi Project
+-- Một Project có thể có nhiều User, và mỗi User có thể tham gia nhiều Project
+-- Role cho biết vai trò của User trong Project (OWNER, MANAGER, MEMBER)
+
+CREATE TABLE IF NOT EXISTS TBL_PROJECT_MEMBERS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    UserID INT NOT NULL,
+    Role ENUM('OWNER', 'MANAGER', 'MEMBER') DEFAULT 'MEMBER',
+    JoinedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Liên kết với bảng Project
+    FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE,
+
+    -- Liên kết với bảng Users
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Tạo bảng Công việc (Tasks)
 CREATE TABLE IF NOT EXISTS TBL_TASKS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -43,7 +62,7 @@ CREATE TABLE IF NOT EXISTS TBL_TASKS (
     FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Tạo sẵn tài khoản Admin mặc định để test (Mật khẩu: 123456)
+-- 6. Tạo sẵn tài khoản Admin mặc định để test (Mật khẩu: 123456)
 -- Dùng INSERT IGNORE để tránh lỗi trùng lặp nếu chạy file này nhiều lần
 INSERT IGNORE INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
 VALUES ('admin', '123456', 'Quản Trị Viên', 'admin@teamwork.com', 'ADMIN');
