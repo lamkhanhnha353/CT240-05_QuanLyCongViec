@@ -10,9 +10,8 @@
       <nav class="flex-1 p-4 space-y-2">
         <a href="#" class="block px-4 py-3 bg-blue-600 rounded-xl font-bold shadow-lg shadow-blue-900/50 transition-all">Bảng điều khiển</a>
         <a href="#" class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all">Quản lý Dự án</a>
-        <a href="#" class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all">Công việc của tôi</a>
+        <a href="#" @click.prevent="currentTab = 'tasks'" class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all">Công việc của tôi</a>
       </nav>
-
       <div class="p-4 border-t border-slate-800">
         <button @click="handleLogout" class="w-full py-3 text-center text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition-all">
           Đăng xuất
@@ -21,6 +20,7 @@
     </aside>
 
     <main class="flex-1 p-10">
+      <div v-if="currentTab == 'dashboard'">
       <header class="flex justify-between items-center mb-10">
         <div>
           <h1 class="text-3xl font-extrabold text-slate-800">Tổng quan hệ thống</h1>
@@ -49,6 +49,9 @@
           <p class="text-4xl font-black text-emerald-500">89</p>
         </div>
       </div>
+      </div><div v-if="currentTab == 'tasks'">
+        <TaskView />
+      </div>
     </main>
   </div>
 </template>
@@ -56,6 +59,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+
+import TaskView from './TaskView.vue'; // Kéo màn hình TaskView vào đây
+// Tạo 1 biến để nhớ xem người dùng đang chọn menu nào. Mặc định là 'dashboard'
+const currentTab = ref('dashboard'); 
 
 const router = useRouter()
 

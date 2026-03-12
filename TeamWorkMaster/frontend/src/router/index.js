@@ -18,6 +18,11 @@ const router = createRouter({
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true } // Đánh dấu: Trang này cần phải có vé mới được vào
+    },
+    {
+      path: '/tasks',
+      name: 'tasks',
+      component: () => import('../views/TaskView.vue')
     }
   ]
 })
