@@ -8,9 +8,23 @@
       </div>
       
       <nav class="flex-1 p-4 space-y-2">
-        <a href="#" class="block px-4 py-3 bg-blue-600 rounded-xl font-bold shadow-lg shadow-blue-900/50 transition-all">Bảng điều khiển</a>
-        <a href="#" class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all">Quản lý Dự án</a>
-        <a href="#" @click.prevent="currentTab = 'tasks'" class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all">Công việc của tôi</a>
+          <a href="#" 
+              @click.prevent="currentTab = 'dashboard'" 
+              class="block px-4 py-3 rounded-xl font-bold transition-all"
+              :class="currentTab === 'dashboard' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+            >Bảng điều khiển</a>
+
+          <a href="#" 
+            @click.prevent="currentTab = 'projects'" 
+            class="block px-4 py-3 rounded-xl font-bold transition-all"
+            :class="currentTab === 'projects' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >Quản lý Dự án</a>
+
+          <a href="#" 
+            @click.prevent="currentTab = 'tasks'" 
+            class="block px-4 py-3 rounded-xl font-bold transition-all"
+            :class="currentTab === 'tasks' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
+          >Công việc của tôi</a>
       </nav>
       <div class="p-4 border-t border-slate-800">
         <button @click="handleLogout" class="w-full py-3 text-center text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition-all">
