@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.teamwork.db.UserDAO;
 import com.teamwork.db.CommentDAO;
+import com.teamwork.db.TaskDAO; // Import thêm TaskDAO
 import com.teamwork.model.Comment;
 
 import java.io.IOException;
@@ -17,10 +18,12 @@ public class ApiServer {
     private HttpServer server;
     private UserDAO userDAO;
     private CommentDAO commentDAO;
+    private TaskDAO taskDAO; // Khai báo TaskDAO
 
     public ApiServer(int port) throws IOException {
         userDAO = new UserDAO();
         commentDAO = new CommentDAO();
+        taskDAO = new TaskDAO(); // Khởi tạo TaskDAO
 
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/api/login", new LoginHandler());
@@ -119,7 +122,13 @@ public class ApiServer {
             }
 
             if ("GET".equals(exchange.getRequestMethod())) {
-                String jsonResult = "{ \"labels\": [\"To Do\", \"In Progress\", \"Done\"], \"data\": [12, 5, 20] }";
+                // ĐÃ SỬA: Lấy số liệu thật từ MySQL qua TaskDAO
+                int[] stats = taskDAO.getTaskStatistics();
+
+                // Ghép vào chuỗi JSON trả về cho Vue.js
+                String jsonResult = String.format(
+                        "{ \"labels\": [\"To Do\", \"In Progress\", \"Done\"], \"data\": [%d, %d, %d] }",
+                        stats[0], stats[1], stats[2]);
                 sendResponse(exchange, 200, jsonResult);
             } else {
                 sendResponse(exchange, 405, "{\"message\": \"Method Not Allowed\"}");
