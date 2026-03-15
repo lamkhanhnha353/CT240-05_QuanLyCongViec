@@ -11,17 +11,46 @@ import java.util.List;
 public class CommentDAO {
 
     /**
+     * Hàm hỗ trợ: Tìm user_id dựa vào tên đăng nhập (username)
+     */
+    private int getUserIdByUsername(String username) {
+        // Mình giả định bảng người dùng tên là 'tbl_users' và cột là 'username' (như
+        // trong ảnh của bạn)
+        String sql = "SELECT id FROM tbl_users WHERE username = ?";
+        Connection conn = DatabaseConnection.getInstance().getConnection();
+
+        if (conn != null) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("id"); // Trả về ID thật của user
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("[CommentDAO] Lỗi khi tra cứu user_id: " + e.getMessage());
+            }
+        }
+        return 1; // Nếu lỗi hoặc không tìm thấy, tạm trả về 1 để không bị crash
+    }
+
+    /**
      * Lấy danh sách toàn bộ bình luận từ Database
      */
     public List<Comment> getAllComments() {
         List<Comment> comments = new ArrayList<>();
-        // Đã sửa lại thành lấy user_id và task_id
-        String sql = "SELECT id, user_id, content, created_at FROM comments ORDER BY created_at ASC";
+
+        // Dùng lệnh JOIN để nối bảng comments và tbl_users, lấy ra tên thật của người
+        // dùng
+        String sql = "SELECT c.id, u.username, c.content, c.created_at " +
+                "FROM comments c " +
+                "LEFT JOIN tbl_users u ON c.user_id = u.id " +
+                "ORDER BY c.created_at ASC";
 
         Connection conn = DatabaseConnection.getInstance().getConnection();
 
         if (conn == null) {
-            System.err.println("[CommentDAO] Lỗi: Không thể lấy kết nối Database từ Singleton.");
+            System.err.println("[CommentDAO] Lỗi: Không thể lấy kết nối Database.");
             return comments;
         }
 
@@ -31,8 +60,10 @@ public class CommentDAO {
             while (rs.next()) {
                 String id = String.valueOf(rs.getInt("id"));
 
-                // Vì database lưu số ID, ta tạm hiển thị chữ "User ID: x" lên màn hình Vue
-                String user = "User ID: " + rs.getInt("user_id");
+                // Lấy tên thật từ bảng tbl_users (nếu không có thì để chữ Khách)
+                String user = rs.getString("username");
+                if (user == null)
+                    user = "Người dùng ẩn";
 
                 String content = rs.getString("content");
                 String time = rs.getString("created_at");
@@ -41,8 +72,7 @@ public class CommentDAO {
                 comments.add(comment);
             }
         } catch (SQLException e) {
-            System.err.println("[CommentDAO] Lỗi khi lấy bình luận: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("[CommentDAO] Lỗi khi lấy bình luận (JOIN): " + e.getMessage());
         }
         return comments;
     }
@@ -51,9 +81,7 @@ public class CommentDAO {
      * Lưu một bình luận mới vào Database
      */
     public boolean addComment(Comment comment) {
-        // Sử dụng hàm NOW() của MySQL để tự động lấy ngày giờ hệ thống
         String sql = "INSERT INTO comments (task_id, user_id, content, created_at) VALUES (?, ?, ?, NOW())";
-
         Connection conn = DatabaseConnection.getInstance().getConnection();
 
         if (conn == null)
@@ -61,20 +89,22 @@ public class CommentDAO {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // Tạm thời gán cứng task_id = 3 và user_id = 1 (giống trong ảnh DB của bạn)
-            // Để đảm bảo lưu thành công mà không bị lỗi Foreign Key
-            stmt.setInt(1, 3); // task_id
-            stmt.setInt(2, 1); // user_id
-            stmt.setString(3, comment.getContent()); // content
+            // 1. Vẫn tạm giữ task_id = 3 vì đây là trang Tổng quan (chưa vào chi tiết từng
+            // công việc)
+            stmt.setInt(1, 3);
 
-            // Đã xóa dòng stmt.setString(4, ...) vì NOW() tự lo liệu ngày giờ rồi
+            // 2. Dịch từ tên đăng nhập (Vue gửi) sang ID thật
+            int realUserId = getUserIdByUsername(comment.getUser());
+            stmt.setInt(2, realUserId);
+
+            // 3. Nội dung bình luận
+            stmt.setString(3, comment.getContent());
 
             int rowsInserted = stmt.executeUpdate();
             return rowsInserted > 0;
 
         } catch (SQLException e) {
             System.err.println("[CommentDAO] Lỗi khi thêm bình luận: " + e.getMessage());
-            e.printStackTrace();
             return false;
         }
     }
