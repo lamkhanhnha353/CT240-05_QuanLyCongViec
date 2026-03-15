@@ -21,18 +21,28 @@ public class DeadlineMonitor implements Runnable {
                 LocalDateTime deadline = task.getDeadline();
 
                 // Nhắc trước 3 ngày
-                if (deadline.minusDays(3).isBefore(now) && deadline.isAfter(now)) {
+                if (!task.isNotified3Days() &&
+                        deadline.minusDays(3).isBefore(now) &&
+                        deadline.isAfter(now)) {
+
                     NotificationService.notifyDeadlineSoon(task);
+                    task.setNotified3Days(true);
                 }
 
                 // Đúng ngày deadline
-                if (now.toLocalDate().isEqual(deadline.toLocalDate())) {
+                if (!task.isNotifiedToday() &&
+                        now.toLocalDate().isEqual(deadline.toLocalDate())) {
+
                     NotificationService.notifyDeadlineToday(task);
+                    task.setNotifiedToday(true);
                 }
 
                 // Quá hạn 1 ngày
-                if (now.isAfter(deadline.plusDays(1))) {
+                if (!task.isNotifiedOverdue() &&
+                        now.isAfter(deadline.plusDays(1))) {
+
                     NotificationService.notifyOverdue(task);
+                    task.setNotifiedOverdue(true);
                 }
             }
 
