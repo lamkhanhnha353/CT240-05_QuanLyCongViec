@@ -10,6 +10,11 @@ public class NotificationService {
                 + "' còn 3 ngày nữa đến deadline!");
     }
 
+    public static void notifyDeadlineToday(Task task) {
+        System.out.println("📅 Hôm nay là deadline của công việc '"
+                + task.getName() + "'!");
+    }
+
     public static void notifyOverdue(Task task) {
         System.out.println("⚠️ Quá hạn: Công việc '" + task.getName()
                 + "' đã quá deadline 1 ngày!");
