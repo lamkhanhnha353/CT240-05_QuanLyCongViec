@@ -4,26 +4,30 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.teamwork.db.UserDAO;
+import com.teamwork.db.CommentDAO;
+import com.teamwork.model.Comment;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public class ApiServer {
     private HttpServer server;
     private UserDAO userDAO;
+    private CommentDAO commentDAO;
 
     public ApiServer(int port) throws IOException {
         userDAO = new UserDAO();
-        // Mở cổng mạng (Ví dụ: 8080)
-        server = HttpServer.create(new InetSocketAddress(port), 0);
+        commentDAO = new CommentDAO();
 
-        // Tạo đường dẫn API (Endpoint) cho chức năng Đăng nhập & Đăng ký
+        server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
-
-        server.setExecutor(null); // Sử dụng luồng mặc định
+        server.createContext("/api/statistics", new StatisticsHandler());
+        server.createContext("/api/comments", new CommentsHandler());
+        server.setExecutor(null);
     }
 
     public void start() {
@@ -32,12 +36,6 @@ public class ApiServer {
         System.out.println("[API SERVER] Dang lang nghe yeu cau tu Web Vue.js...");
     }
 
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
     class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -52,33 +50,19 @@ public class ApiServer {
 
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Dang xu ly Dang nhap: " + requestBody);
-
                 String username = "";
                 String password = "";
                 try {
-                    // Cắt chuỗi giống hệt bên Đăng ký để đảm bảo không bao giờ lỗi
                     username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
                     password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
                 } catch (Exception e) {
-                    System.err.println("[LỖI CẮT CHUỖI JSON]: " + e.getMessage());
                     sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu khong hop le\"}");
                     return;
                 }
 
-                // In ra xem Java thực sự đọc được chữ gì
-                System.out.println("[API SERVER] Username doc duoc: [" + username + "]");
-                System.out.println("[API SERVER] Password doc duoc: [" + password + "]");
-
                 boolean isValid = userDAO.login(username, password);
-
-                String responseJson;
-                if (isValid) {
-                    responseJson = "{\"success\": true, \"message\": \"Dang nhap thanh cong\"}";
-                } else {
-                    responseJson = "{\"success\": false, \"message\": \"Sai tai khoan hoac mat khau\"}";
-                }
-
+                String responseJson = isValid ? "{\"success\": true, \"message\": \"Dang nhap thanh cong\"}"
+                        : "{\"success\": false, \"message\": \"Sai tai khoan hoac mat khau\"}";
                 sendResponse(exchange, 200, responseJson);
             } else {
                 sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phuong thuc khong ho tro\"}");
@@ -86,9 +70,6 @@ public class ApiServer {
         }
     }
 
-    // ==========================================
-    // 2. LỚP XỬ LÝ ĐĂNG KÝ (/api/register)
-    // ==========================================
     class RegisterHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -103,8 +84,6 @@ public class ApiServer {
 
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Nhan yeu cau dang ky...");
-
                 try {
                     String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
                     String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
@@ -128,9 +107,86 @@ public class ApiServer {
         }
     }
 
-    // ==========================================
-    // 3. HÀM HỖ TRỢ GỬI PHẢN HỒI (Dùng chung)
-    // ==========================================
+    class StatisticsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("GET".equals(exchange.getRequestMethod())) {
+                String jsonResult = "{ \"labels\": [\"To Do\", \"In Progress\", \"Done\"], \"data\": [12, 5, 20] }";
+                sendResponse(exchange, 200, jsonResult);
+            } else {
+                sendResponse(exchange, 405, "{\"message\": \"Method Not Allowed\"}");
+            }
+        }
+    }
+
+    class CommentsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("GET".equals(exchange.getRequestMethod())) {
+                List<Comment> list = commentDAO.getAllComments();
+                StringBuilder json = new StringBuilder("[");
+                for (int i = 0; i < list.size(); i++) {
+                    Comment c = list.get(i);
+                    json.append(String.format("{\"id\":\"%s\",\"user\":\"%s\",\"content\":\"%s\",\"time\":\"%s\"}",
+                            c.getId(), c.getUser(), c.getContent(), c.getTime()));
+                    if (i < list.size() - 1)
+                        json.append(",");
+                }
+                json.append("]");
+                sendResponse(exchange, 200, json.toString());
+            } else if ("POST".equals(exchange.getRequestMethod())) {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+                System.out.println("\n--- CO BINH LUAN MOI TU VUE.JS ---");
+                System.out.println("[JSON GOC]: " + requestBody);
+
+                try {
+                    String user = requestBody.split("\"user\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String content = requestBody.split("\"content\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String time = requestBody.split("\"time\"\\s*:\\s*\"")[1].split("\"")[0];
+
+                    System.out.println("[BOC TACH]: User=" + user + " | Content=" + content + " | Time=" + time);
+
+                    Comment newComment = new Comment("0", user, content, time);
+                    boolean success = commentDAO.addComment(newComment);
+
+                    if (success) {
+                        System.out.println("[KET QUA]: Thanh cong luu vao MySQL!");
+                        sendResponse(exchange, 200, "{\"success\": true}");
+                    } else {
+                        System.out.println("[KET QUA]: LỖI! commentDAO.addComment() tra ve false.");
+                        System.out.println(
+                                "[GỢI Ý]: Kiem tra lai ket noi MySQL (DatabaseConnection.java) hoac loi truy van SQL.");
+                        sendResponse(exchange, 500, "{\"success\": false}");
+                    }
+                } catch (Exception e) {
+                    System.out.println("[KET QUA]: LỖI BOC TACH JSON! " + e.getMessage());
+                    e.printStackTrace();
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Loi doc du lieu\"}");
+                }
+            } else {
+                sendResponse(exchange, 405, "{\"message\": \"Method Not Allowed\"}");
+            }
+        }
+    }
+
     private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");

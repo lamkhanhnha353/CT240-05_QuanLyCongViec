@@ -43,7 +43,7 @@
           </div>
           <div class="w-16 h-16 rounded-full border-4 flex items-center justify-center font-bold" 
                :class="getBorderColorForStatus(stat)">
-            {{ Math.round((statistics.data[index] / totalTasks) * 100) }}%
+            {{ totalTasks === 0 ? 0 : Math.round((statistics.data[index] / totalTasks) * 100) }}%
           </div>
         </div>
       </div>
@@ -72,6 +72,10 @@
           </h2>
           
           <div class="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+            <div v-if="comments.length === 0" class="text-center text-slate-400 mt-10">
+              Chưa có bình luận nào. Hãy là người đầu tiên thảo luận!
+            </div>
+
             <div v-for="comment in comments" :key="comment.id" 
                  class="p-3 rounded-2xl" 
                  :class="comment.user === currentUser ? 'bg-blue-50 ml-8' : 'bg-slate-50 mr-8'">
@@ -106,24 +110,23 @@ const router = useRouter()
 const currentUser = ref('Khách')
 const firstLetter = ref('K')
 
-// --- DATA CHO THỐNG KÊ (Sẽ lấy từ Backend Java) ---
-// Định dạng JSON này khớp hoàn toàn với String mà Java đang return ở doInBackground()
+// --- DATA ---
 const statistics = ref({
   labels: ["To Do", "In Progress", "Done"],
-  data: [12, 5, 20]
+  data: [0, 0, 0] // Mặc định là 0 trước khi tải từ Java lên
 })
+const comments = ref([])
+const newComment = ref('')
 
-// Tính tổng số lượng công việc
+// --- COMPUTED PROPERTIES ---
 const totalTasks = computed(() => statistics.value.data.reduce((a, b) => a + b, 0))
-
-// Tính phần trăm hoàn thành (Dựa trên Done / Total)
 const progressPercent = computed(() => {
   if (totalTasks.value === 0) return 0
   const doneIndex = statistics.value.labels.indexOf("Done")
   return Math.round((statistics.value.data[doneIndex] / totalTasks.value) * 100)
 })
 
-// Hàm hỗ trợ màu sắc
+// --- HÀM HỖ TRỢ GIAO DIỆN ---
 const getColorForStatus = (status) => {
   if (status === 'To Do') return 'text-slate-600'
   if (status === 'In Progress') return 'text-orange-500'
@@ -135,49 +138,86 @@ const getBorderColorForStatus = (status) => {
   if (status === 'Done') return 'border-emerald-200 text-emerald-500'
 }
 
-// --- DATA CHO BÌNH LUẬN ---
-const comments = ref([
-  { id: 1, user: 'Quản lý', content: 'Tiến độ dự án đang rất tốt, mọi người cố gắng nhé!', time: '10:00 AM' },
-  { id: 2, user: 'Dev Team', content: 'Đã hoàn thành xong module Thống kê backend.', time: '10:15 AM' }
-])
-const newComment = ref('')
+// --- GỌI API BACKEND ---
 
-const submitComment = () => {
+// 1. Tải Thống kê
+const fetchStatistics = async () => {
+  try {
+    const res = await fetch('http://localhost:8080/api/statistics')
+    if (res.ok) {
+      const data = await res.json()
+      statistics.value = data
+    }
+  } catch (error) {
+    console.error("Lỗi khi tải thống kê từ Backend:", error)
+  }
+}
+
+// 2. Tải danh sách Bình luận
+const fetchComments = async () => {
+  try {
+    const res = await fetch('http://localhost:8080/api/comments')
+    if (res.ok) {
+      const data = await res.json()
+      comments.value = data
+    }
+  } catch (error) {
+    console.error("Lỗi khi tải bình luận từ Backend:", error)
+  }
+}
+
+// 3. Gửi Bình luận mới
+const submitComment = async () => {
   if (!newComment.value.trim()) return
   
-  // Lấy giờ hiện tại
   const now = new Date()
   const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-  // Đẩy bình luận mới vào danh sách UI (Sau này sẽ gọi fetch/axios gửi về Java API ở đây)
-  comments.value.push({
-    id: Date.now(),
+  const commentData = {
     user: currentUser.value,
     content: newComment.value,
     time: timeString
-  })
-  
-  newComment.value = '' // Clear input
+  }
+
+  try {
+    // Gửi POST request xuống Java
+    const res = await fetch('http://localhost:8080/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(commentData)
+    })
+
+    if (res.ok) {
+      // Thành công thì tải lại danh sách bình luận mới nhất từ Database
+      await fetchComments()
+      newComment.value = '' // Xóa trống ô input
+    } else {
+      alert("Lỗi khi lưu bình luận vào Database!")
+    }
+  } catch (error) {
+    console.error("Lỗi kết nối khi gửi bình luận:", error)
+    alert("Không thể kết nối đến máy chủ Java!")
+  }
 }
 
 // --- KHỞI TẠO ---
 onMounted(() => {
+  // 1. Lấy thông tin user đăng nhập
   const storedUser = localStorage.getItem('username')
   if (storedUser) {
     currentUser.value = storedUser
     firstLetter.value = storedUser.charAt(0).toUpperCase()
   }
 
-  // TODO: Call API tới ApiServer.java để lấy số liệu thực tế thay vì dùng fake data
-  // fetch('http://localhost:8080/api/statistics')
-  //   .then(res => res.json())
-  //   .then(data => statistics.value = data)
+  // 2. Tự động lấy dữ liệu từ Backend khi vừa vào trang
+  fetchStatistics()
+  fetchComments()
 })
 
 const handleLogout = () => {
-  localStorage.removeItem('isLoggedIn');
-  localStorage.removeItem('username');
-  alert("Đã đăng xuất khỏi hệ thống!");
-  router.push('/');
+  localStorage.removeItem('isLoggedIn')
+  localStorage.removeItem('username')
+  alert("Đã đăng xuất khỏi hệ thống!")
+  router.push('/')
 }
 </script>
