@@ -5,8 +5,13 @@ public class NotificationService {
                 + "' đã đổi trạng thái thành: " + task.getStatus());
     }
 
-    public static void notifyDeadline(Task task) {
-        System.out.println("⏰ Cảnh báo: Deadline của '"
-                + task.getName() + "' sắp đến!");
+    public static void notifyDeadlineSoon(Task task) {
+        System.out.println("⏰ Nhắc nhở: Công việc '" + task.getName()
+                + "' còn 3 ngày nữa đến deadline!");
+    }
+
+    public static void notifyOverdue(Task task) {
+        System.out.println("⚠️ Quá hạn: Công việc '" + task.getName()
+                + "' đã quá deadline 1 ngày!");
     }
 }

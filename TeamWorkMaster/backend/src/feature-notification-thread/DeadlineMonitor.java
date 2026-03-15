@@ -14,17 +14,25 @@ public class DeadlineMonitor implements Runnable {
 
         while (true) {
 
+            LocalDateTime now = LocalDateTime.now();
+
             for (Task task : tasks) {
 
-                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime deadline = task.getDeadline();
 
-                if (task.getDeadline().minusMinutes(1).isBefore(now)) {
-                    NotificationService.notifyDeadline(task);
+                // Thông báo trước 3 ngày
+                if (deadline.minusDays(3).isBefore(now) && deadline.isAfter(now)) {
+                    NotificationService.notifyDeadlineSoon(task);
+                }
+
+                // Quá hạn 1 ngày
+                if (now.isAfter(deadline.plusDays(1))) {
+                    NotificationService.notifyOverdue(task);
                 }
             }
 
             try {
-                Thread.sleep(5000); // kiểm tra mỗi 5 giây
+                Thread.sleep(10000); // kiểm tra mỗi 10 giây
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

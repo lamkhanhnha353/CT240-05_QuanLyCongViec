@@ -9,22 +9,13 @@ public class Main {
         List<Task> tasks = new ArrayList<>();
 
         Task task1 = new Task(
-                "Thiết kế giao diện",
+                "Làm báo cáo",
                 "Đang làm",
-                LocalDateTime.now().plusSeconds(20));
+                LocalDateTime.now().plusSeconds(15));
 
         tasks.add(task1);
 
-        // tạo thread kiểm tra deadline
         Thread monitor = new Thread(new DeadlineMonitor(tasks));
         monitor.start();
-
-        // giả lập thay đổi trạng thái
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e) {
-        }
-
-        task1.setStatus("Hoàn thành");
     }
 }
