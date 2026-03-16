@@ -129,27 +129,20 @@ public class ApiServer {
         os.write(bytes);
         os.close();
     }
-
-    // ==========================================
-    // 4. LỚP XỬ LÝ QUẢN LÝ CÔNG VIỆC (/api/tasks) -> CẬP NHẬT FULL CRUD
+// ==========================================
+    // LỚP XỬ LÝ QUẢN LÝ CÔNG VIỆC (/api/tasks)
     // ==========================================
     class TaskHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            // Thêm PUT và DELETE vào danh sách cho phép
             exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
 
             String method = exchange.getRequestMethod();
-
-            if ("OPTIONS".equals(method)) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
+            if ("OPTIONS".equals(method)) { exchange.sendResponseHeaders(204, -1); return; }
 
             try {
-                // LẤY DANH SÁCH (GET)
                 if ("GET".equals(method)) {
                     java.util.List<com.teamwork.db.Task> tasks = taskDAO.getAllTasks();
                     StringBuilder json = new StringBuilder("[");
@@ -161,8 +154,8 @@ public class ApiServer {
                             .append("\"notes\":\"").append(escapeJson(t.getDescription())).append("\",")
                             .append("\"priority\":\"").append(escapeJson(t.getPriority())).append("\",")
                             .append("\"progress\":\"").append(escapeJson(t.getStatus())).append("\",")
-                            .append("\"projectId\":").append(t.getProjectId() != null ? t.getProjectId() : "null").append(",")
-                            .append("\"assignee\":\"").append(t.getAssigneeId() != null ? "User " + t.getAssigneeId() : "").append("\",")
+                            .append("\"projectId\":").append(t.getProjectId()).append(",") // Gửi ProjectID
+                            .append("\"assignee\":").append(t.getAssigneeId() != null ? t.getAssigneeId() : "null").append(",")
                             .append("\"deadline\":").append(t.getDeadline() != null ? "\"" + t.getDeadline().toString() + "\"" : "null")
                             .append("}");
                         if (i < tasks.size() - 1) json.append(",");
@@ -170,111 +163,92 @@ public class ApiServer {
                     json.append("]");
                     sendResponse(exchange, 200, json.toString());
 
-                // TẠO CÔNG VIỆC (POST)
                 } else if ("POST".equals(method)) {
                     String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                     try {
                         com.teamwork.db.Task newTask = new com.teamwork.db.Task();
                         newTask.setTitle(requestBody.split("\"title\"\\s*:\\s*\"")[1].split("\"")[0]);
                         
-                        if (requestBody.contains("\"notes\"")) 
-                            newTask.setDescription(requestBody.split("\"notes\"\\s*:\\s*\"")[1].split("\"")[0]);
-                        
-                        if (requestBody.contains("\"priority\"")) 
-                            newTask.setPriority(requestBody.split("\"priority\"\\s*:\\s*\"")[1].split("\"")[0]);
+                        if (requestBody.contains("\"notes\"")) newTask.setDescription(requestBody.split("\"notes\"\\s*:\\s*\"")[1].split("\"")[0]);
+                        if (requestBody.contains("\"priority\"")) newTask.setPriority(requestBody.split("\"priority\"\\s*:\\s*\"")[1].split("\"")[0]);
+                        if (requestBody.contains("\"progress\"")) newTask.setStatus(requestBody.split("\"progress\"\\s*:\\s*\"")[1].split("\"")[0]); 
                         
                         if (requestBody.contains("\"assignee\"")) {
-                            String assigneeStr = requestBody.split("\"assignee\"\\s*:\\s*\"")[1].split("\"")[0].trim();
-                            try { newTask.setAssigneeId(Integer.parseInt(assigneeStr)); } catch(Exception e) {}
+                            String assigneeStr = requestBody.split("\"assignee\"\\s*:\\s*\"?")[1].split("[\",}]")[0].trim();
+                            if (!assigneeStr.isEmpty() && !assigneeStr.equals("null")) newTask.setAssigneeId(Integer.parseInt(assigneeStr));
                         }
                         
+                        // Xử lý ProjectID bắt buộc
                         if (requestBody.contains("\"projectId\"")) {
                             String pidStr = requestBody.split("\"projectId\"\\s*:\\s*\"?")[1].split("[\",}]")[0].trim();
-                            try { if (!pidStr.isEmpty()) newTask.setProjectId(Integer.parseInt(pidStr)); } catch(Exception e) {}
-                        }
-
-                        if (requestBody.contains("\"deadline\"")) {
-                            String dl = requestBody.split("\"deadline\"\\s*:\\s*\"")[1].split("\"")[0].trim();
-                            if (!dl.isEmpty()) newTask.setDeadline(java.sql.Timestamp.valueOf(dl + " 00:00:00"));
+                            if (!pidStr.isEmpty() && !pidStr.equals("null")) {
+                                newTask.setProjectId(Integer.parseInt(pidStr));
+                            } else { 
+                                sendResponse(exchange, 400, "{\"success\": false, \"message\": \"ProjectID is required\"}"); 
+                                return; 
+                            }
+                        } else { 
+                            sendResponse(exchange, 400, "{\"success\": false, \"message\": \"ProjectID is required\"}"); 
+                            return; 
                         }
                         
-                        newTask.setStatus("TODO"); // Mặc định
+                        if (requestBody.contains("\"deadline\"")) {
+                            String dl = requestBody.split("\"deadline\"\\s*:\\s*\"")[1].split("\"")[0].trim();
+                            if (!dl.isEmpty() && !dl.equals("null")) newTask.setDeadline(java.sql.Date.valueOf(dl)); 
+                        }
+                        
+                        if (newTask.getStatus() == null || newTask.getStatus().isEmpty()) newTask.setStatus("TODO");
+                        
                         boolean isSuccess = taskDAO.insertTask(newTask);
+                        if (isSuccess) sendResponse(exchange, 201, "{\"success\": true}");
+                        else sendResponse(exchange, 500, "{\"success\": false}");
+                    } catch (Exception e) { sendResponse(exchange, 400, "{\"success\": false}"); }
 
-                        if (isSuccess) sendResponse(exchange, 201, "{\"success\": true, \"message\": \"Tao cong viec thanh cong\"}");
-                        else sendResponse(exchange, 500, "{\"success\": false, \"message\": \"Loi khi luu vao DB\"}");
-                    } catch (Exception e) {
-                        sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu gui len khong hop le\"}");
-                    }
-
-                // XÓA CÔNG VIỆC (DELETE)
                 } else if ("DELETE".equals(method)) {
                     String query = exchange.getRequestURI().getQuery();
                     if (query != null && query.contains("id=")) {
-                        try {
-                            int id = Integer.parseInt(query.split("id=")[1].split("&")[0]);
-                            boolean isSuccess = taskDAO.deleteTask(id);
-                            if (isSuccess) sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Xóa thành công!\"}");
-                            else sendResponse(exchange, 404, "{\"success\": false, \"message\": \"Không tìm thấy!\"}");
-                        } catch (Exception e) {
-                            sendResponse(exchange, 400, "{\"success\": false, \"message\": \"ID không hợp lệ!\"}");
-                        }
-                    } else {
-                        sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Thiếu tham số ID!\"}");
-                    }
+                        int id = Integer.parseInt(query.split("id=")[1].split("&")[0]);
+                        if (taskDAO.deleteTask(id)) sendResponse(exchange, 200, "{\"success\": true}");
+                        else sendResponse(exchange, 404, "{\"success\": false}");
+                    } else sendResponse(exchange, 400, "{\"success\": false}");
 
-                // SỬA CÔNG VIỆC (PUT)
                 } else if ("PUT".equals(method)) {
                     String query = exchange.getRequestURI().getQuery();
                     if (query != null && query.contains("id=")) {
                         try {
                             int id = Integer.parseInt(query.split("id=")[1].split("&")[0]);
                             String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                            
                             com.teamwork.db.Task task = new com.teamwork.db.Task();
-                            task.setId(id); // Set ID quan trọng nhất để UPDATE
+                            task.setId(id);
                             
-                            // Parse giống như lúc Thêm
                             task.setTitle(requestBody.split("\"title\"\\s*:\\s*\"")[1].split("\"")[0]);
                             if (requestBody.contains("\"notes\"")) task.setDescription(requestBody.split("\"notes\"\\s*:\\s*\"")[1].split("\"")[0]);
                             if (requestBody.contains("\"priority\"")) task.setPriority(requestBody.split("\"priority\"\\s*:\\s*\"")[1].split("\"")[0]);
-                            if (requestBody.contains("\"progress\"")) task.setStatus(requestBody.split("\"progress\"\\s*:\\s*\"")[1].split("\"")[0]); // Sửa trạng thái
+                            if (requestBody.contains("\"progress\"")) task.setStatus(requestBody.split("\"progress\"\\s*:\\s*\"")[1].split("\"")[0]); 
                             
                             if (requestBody.contains("\"assignee\"")) {
-                                String assigneeStr = requestBody.split("\"assignee\"\\s*:\\s*\"")[1].split("\"")[0].trim();
-                                try { task.setAssigneeId(Integer.parseInt(assigneeStr)); } catch(Exception e) {}
+                                String assigneeStr = requestBody.split("\"assignee\"\\s*:\\s*\"?")[1].split("[\",}]")[0].trim();
+                                if (!assigneeStr.isEmpty() && !assigneeStr.equals("null")) task.setAssigneeId(Integer.parseInt(assigneeStr));
                             }
+                            
                             if (requestBody.contains("\"projectId\"")) {
                                 String pidStr = requestBody.split("\"projectId\"\\s*:\\s*\"?")[1].split("[\",}]")[0].trim();
-                                try { if (!pidStr.isEmpty()) task.setProjectId(Integer.parseInt(pidStr)); } catch(Exception e) {}
+                                if (!pidStr.isEmpty() && !pidStr.equals("null")) task.setProjectId(Integer.parseInt(pidStr));
                             }
+                            
                             if (requestBody.contains("\"deadline\"")) {
                                 String dl = requestBody.split("\"deadline\"\\s*:\\s*\"")[1].split("\"")[0].trim();
-                                if (!dl.isEmpty()) task.setDeadline(java.sql.Timestamp.valueOf(dl + " 00:00:00"));
+                                if (!dl.isEmpty() && !dl.equals("null")) task.setDeadline(java.sql.Date.valueOf(dl));
                             }
 
-                            boolean isSuccess = taskDAO.updateTask(task);
-                            if (isSuccess) sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Cập nhật thành công!\"}");
-                            else sendResponse(exchange, 404, "{\"success\": false, \"message\": \"Không tìm thấy công việc!\"}");
-                        } catch (Exception e) {
-                            sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu lỗi!\"}");
-                        }
-                    } else {
-                        sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Thiếu ID!\"}");
-                    }
-
-                } else {
-                    sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phương thức không hỗ trợ\"}");
+                            if (taskDAO.updateTask(task)) sendResponse(exchange, 200, "{\"success\": true}");
+                            else sendResponse(exchange, 404, "{\"success\": false}");
+                        } catch (Exception e) { sendResponse(exchange, 400, "{\"success\": false}"); }
+                    } else sendResponse(exchange, 400, "{\"success\": false}");
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendResponse(exchange, 500, "{\"success\": false, \"message\": \"Lỗi Server\"}");
-            }
+            } catch (Exception e) { sendResponse(exchange, 500, "{\"success\": false}"); }
         }
-
-        private String escapeJson(String data) {
-            if (data == null) return "";
-            return data.replace("\"", "\\\"");
-        }
+        
+        private String escapeJson(String data) { return data == null ? "" : data.replace("\"", "\\\""); }
     }
 }

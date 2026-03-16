@@ -1,21 +1,19 @@
 package com.teamwork.db;
 
+import java.sql.Date; 
 import java.sql.Timestamp;
 
 public class Task {
     private int id;
     private String title;
-    private String description; // Tương đương với Chú thích
+    private String description; 
     private String priority;
-    private Timestamp deadline;
-    private String status;      // Tương đương với Tiến độ
-    private Integer assigneeId; // Dùng Integer để có thể lưu null nếu chưa giao việc
-    private Integer projectId;
+    private Date deadline;      // Chuyển về java.sql.Date để khớp với DB
+    private String status;      
+    private Integer assigneeId; 
+    private Integer projectId;  
     private Timestamp createdAt;
 
-    // --- BẠN NHỚ DÙNG VS CODE GENERATE LẠI GETTER/SETTER CHO CÁC BIẾN NÀY NHÉ ---
-    // (Chuột phải -> Source Action -> Generate Getters and Setters)
-    
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getTitle() { return title; }
@@ -24,8 +22,8 @@ public class Task {
     public void setDescription(String description) { this.description = description; }
     public String getPriority() { return priority; }
     public void setPriority(String priority) { this.priority = priority; }
-    public Timestamp getDeadline() { return deadline; }
-    public void setDeadline(Timestamp deadline) { this.deadline = deadline; }
+    public Date getDeadline() { return deadline; }
+    public void setDeadline(Date deadline) { this.deadline = deadline; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Integer getAssigneeId() { return assigneeId; }
