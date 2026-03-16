@@ -1,19 +1,22 @@
+package com.teamwork.core;
+
 import java.time.LocalDateTime;
 
 public class Task {
 
     private String name;
     private String status;
+    private String userEmail;
     private LocalDateTime deadline;
 
-    // tránh gửi trùng thông báo
     private boolean notified3Days = false;
     private boolean notifiedToday = false;
     private boolean notifiedOverdue = false;
 
-    public Task(String name, String status, LocalDateTime deadline) {
+    public Task(String name, String status, String userEmail, LocalDateTime deadline) {
         this.name = name;
         this.status = status;
+        this.userEmail = userEmail;
         this.deadline = deadline;
     }
 
@@ -25,13 +28,20 @@ public class Task {
         return status;
     }
 
+    public String getUserEmail() {
+        return userEmail;
+    }
+
     public LocalDateTime getDeadline() {
         return deadline;
     }
 
     public void setStatus(String status) {
-        this.status = status;
-        NotificationService.notifyStatusChange(this);
+
+        if (!this.status.equals(status)) {
+            this.status = status;
+            NotificationService.notifyStatusChange(this);
+        }
     }
 
     public boolean isNotified3Days() {

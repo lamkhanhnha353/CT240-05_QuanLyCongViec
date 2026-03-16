@@ -1,3 +1,7 @@
+package com.teamwork.kernel;
+
+import com.teamwork.core.Task;
+import com.teamwork.core.NotificationService;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -39,7 +43,7 @@ public class DeadlineMonitor implements Runnable {
 
                 // Quá hạn 1 ngày
                 if (!task.isNotifiedOverdue() &&
-                        now.isAfter(deadline.plusDays(1))) {
+                        !now.isBefore(deadline.plusDays(1))) {
 
                     NotificationService.notifyOverdue(task);
                     task.setNotifiedOverdue(true);
