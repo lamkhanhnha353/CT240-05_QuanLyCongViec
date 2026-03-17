@@ -51,8 +51,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useToast } from '../composables/useToast' // Import composable Toast
 
 const emit = defineEmits(['close', 'refresh']) // Đổi sang 'refresh' để báo cho bảng tải lại
+const { addToast } = useToast() // Khởi tạo Toast
+
 const formData = ref({ username: '', fullname: '', email: '', password: '' })
 const errors = ref({ username: '', fullname: '', email: '', password: '' })
 const showPassword = ref(false)
@@ -97,7 +100,7 @@ const submitForm = async () => {
       const data = await response.json();
       
       if (data.success) {
-        alert("Tạo tài khoản thành công!");
+        addToast("Tạo tài khoản thành công!", "success");
         emit('refresh'); // Load lại danh sách bảng
         emit('close');   // Đóng Modal
       } else {
@@ -107,11 +110,11 @@ const submitForm = async () => {
         } else if (data.field === 'email') {
           errors.value.email = data.message;
         } else {
-          alert(data.message);
+          addToast(data.message, "error");
         }
       }
     } catch (error) {
-      alert("Lỗi kết nối Server Java!");
+      addToast("Lỗi kết nối Server Java!", "error"); 
       console.error(error);
     }
   }

@@ -4,7 +4,7 @@
     <aside class="w-64 bg-slate-950 border-r border-slate-800 flex flex-col">
       <div class="h-16 flex items-center justify-center border-b border-slate-800">
         <h1 class="text-xl font-black text-white tracking-widest">
-          <span class="text-red-500">ADMIN</span> CORE
+          <span class="text-red-500">ADMIN</span> SYSTEM
         </h1>
       </div>
 
@@ -15,9 +15,7 @@
         <router-link to="/admin/users" class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors font-semibold" active-class="bg-blue-600 text-white">
           🛡️ Quản lý user
         </router-link>
-        <router-link to="/admin/logs" class="block px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors font-semibold" active-class="bg-blue-600 text-white">
-          🕵️‍♂️ Nhật ký Hệ thống
-        </router-link>
+        
       </nav>
 
       <div class="p-4 border-t border-slate-800">
