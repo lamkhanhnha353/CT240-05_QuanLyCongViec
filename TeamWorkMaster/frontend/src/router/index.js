@@ -13,25 +13,32 @@ const router = createRouter({
       name: 'register',
       component: () => import('../views/RegisterView.vue')
     },
+    // ==========================================
     // KHU VỰC DÀNH CHO USER BÌNH THƯỜNG
+    // ==========================================
     {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true, role: 'MEMBER' } 
     },
+    // ==========================================
     // KHU VỰC CẤM - CHỈ DÀNH CHO ADMIN
+    // ==========================================
     {
       path: '/admin',
       component: () => import('../views/AdminView.vue'),
       meta: { requiresAuth: true, role: 'ADMIN' },
       children: [
         {
-          path: '', // Mặc định khi vào /admin sẽ tự động nhảy sang /admin/users
-          redirect: '/admin/users'
+          // Mặc định khi vào /admin sẽ hiển thị Bảng điều khiển (Biểu đồ)
+          path: '', 
+          name: 'admin-dashboard',
+          component: () => import('../views/AdminDashboardView.vue')
         },
         {
-          path: 'users', // Đường dẫn sẽ là /admin/users
+          // Khi vào /admin/users sẽ hiển thị Bảng quản lý Cư dân mạng
+          path: 'users', 
           name: 'admin-users',
           component: () => import('../views/AdminUsersView.vue')
         }
@@ -40,7 +47,9 @@ const router = createRouter({
   ]
 })
 
-// BÁC BẢO VỆ SIÊU CẤP
+// ==========================================
+// BÁC BẢO VỆ SIÊU CẤP (Navigation Guards)
+// ==========================================
 router.beforeEach((to, from, next) => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const userRole = localStorage.getItem('role'); // Lấy quyền hạn từ vé
@@ -62,7 +71,7 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  // 3. Đang ở màn hình Login mà có vé rồi -> Tự động chuyển trang
+  // 3. Đang ở màn hình Login/Register mà có vé rồi -> Tự động chuyển trang
   if ((to.path === '/' || to.path === '/register') && isLoggedIn) {
     if (userRole === 'ADMIN') return next('/admin');
     return next('/dashboard');

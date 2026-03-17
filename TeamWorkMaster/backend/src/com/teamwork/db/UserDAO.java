@@ -7,9 +7,6 @@ import java.sql.SQLException;
 
 public class UserDAO {
 
-    // ==========================================
-    // 1. HÀM ĐĂNG NHẬP (TRẢ VỀ QUYỀN - ROLE)
-    // ==========================================
     public String login(String username, String password) {
         String sql = "SELECT Role, IsActive, FullName FROM TBL_USERS WHERE Username = ? AND PasswordHash = ?";
         try {
@@ -20,24 +17,20 @@ public class UserDAO {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                // Kiểm tra xem tài khoản có bị Admin khóa không (IsActive == false)
                 if (!rs.getBoolean("IsActive")) {
                     return "BANNED";
                 }
                 System.out.println("[AUTH] Dang nhap thanh cong: " + rs.getString("FullName") + " | Quyen: "
                         + rs.getString("Role"));
-                return rs.getString("Role"); // Trả về ADMIN hoặc MEMBER
+                return rs.getString("Role");
             }
             pstmt.close();
         } catch (SQLException e) {
             System.err.println("[UserDAO] Loi dang nhap: " + e.getMessage());
         }
-        return null; // Sai tài khoản hoặc mật khẩu
+        return null;
     }
 
-    // ==========================================
-    // 2. HÀM ĐĂNG KÝ (DÀNH CHO NGƯỜI DÙNG TỰ ĐĂNG KÝ)
-    // ==========================================
     public boolean register(String username, String password, String fullName, String email) {
         String sql = "INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) VALUES (?, ?, ?, ?, 'MEMBER')";
         try {
@@ -56,9 +49,6 @@ public class UserDAO {
         return false;
     }
 
-    // ==========================================
-    // 3. HÀM QUÉT TRÙNG LẶP DỮ LIỆU
-    // ==========================================
     private boolean isDuplicate(String column, String value, int excludeId) {
         String sql = "SELECT ID FROM TBL_USERS WHERE " + column + " = ?";
         if (excludeId > 0) {
@@ -68,9 +58,8 @@ public class UserDAO {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, value);
-            if (excludeId > 0) {
+            if (excludeId > 0)
                 pstmt.setInt(2, excludeId);
-            }
             ResultSet rs = pstmt.executeQuery();
             boolean exists = rs.next();
             pstmt.close();
@@ -81,14 +70,11 @@ public class UserDAO {
         return false;
     }
 
-    // ==========================================
-    // 4. TẠO MỚI TÀI KHOẢN (BỞI ADMIN)
-    // ==========================================
     public int addUserByAdmin(String username, String password, String fullName, String email) {
         if (isDuplicate("Username", username, -1))
-            return -1; // -1: Trùng Username
+            return -1;
         if (isDuplicate("Email", email, -1))
-            return -2; // -2: Trùng Email
+            return -2;
 
         String sql = "INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role, IsActive) VALUES (?, ?, ?, ?, 'MEMBER', 1)";
         try {
@@ -108,16 +94,9 @@ public class UserDAO {
         return 0;
     }
 
-    // ==========================================
-    // 5. CẬP NHẬT TÀI KHOẢN (BỞI ADMIN)
-    // ==========================================
-    // ==========================================
-    // 5. CẬP NHẬT TÀI KHOẢN (BỞI ADMIN) - ĐÃ BỎ KIỂM TRA PASS CŨ
-    // ==========================================
     public int updateUser(int id, String fullName, String email, String newPassword) {
-        // Chỉ cần kiểm tra trùng Email với người khác
         if (isDuplicate("Email", email, id))
-            return -2; // -2: Email đã bị người khác lấy
+            return -2;
 
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -143,20 +122,47 @@ public class UserDAO {
 
             int rowsAffected = pstmt.executeUpdate();
             pstmt.close();
-            return rowsAffected > 0 ? 1 : 0; // 1: Thành công, 0: Thất bại
-
+            return rowsAffected > 0 ? 1 : 0;
         } catch (SQLException e) {
             System.err.println("[UserDAO] Lỗi cập nhật User: " + e.getMessage());
             return 0;
         }
     }
 
-    // ==========================================
-    // 6. LẤY DANH SÁCH TÀI KHOẢN
-    // ==========================================
+    public boolean deleteUser(int id) {
+        String sql = "DELETE FROM TBL_USERS WHERE ID = ?";
+        try {
+            Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, id);
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] Lỗi xóa User: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean toggleUserLock(int id) {
+        String sql = "UPDATE TBL_USERS SET IsActive = CASE WHEN IsActive = 1 THEN 0 ELSE 1 END WHERE ID = ?";
+        try {
+            Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, id);
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] Lỗi khóa/mở khóa User: " + e.getMessage());
+            return false;
+        }
+    }
+
     public String getAllMembersJson() {
         StringBuilder json = new StringBuilder("[");
-        String sql = "SELECT ID, Username, FullName, Email, IsActive FROM TBL_USERS WHERE Role = 'MEMBER'";
+        // Bổ sung lấy cột CreatedAt từ Database
+        String sql = "SELECT ID, Username, FullName, Email, IsActive, CreatedAt FROM TBL_USERS WHERE Role = 'MEMBER' ORDER BY ID ASC";
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -171,7 +177,12 @@ public class UserDAO {
                 json.append("\"username\":\"").append(rs.getString("Username")).append("\",");
                 json.append("\"fullname\":\"").append(rs.getString("FullName")).append("\",");
                 json.append("\"email\":\"").append(rs.getString("Email")).append("\",");
-                json.append("\"isActive\":").append(rs.getBoolean("IsActive"));
+                json.append("\"isActive\":").append(rs.getBoolean("IsActive")).append(",");
+
+                // Xử lý lấy ngày tạo (Đề phòng database cũ bị null)
+                String createdAt = rs.getString("CreatedAt");
+                json.append("\"createdAt\":\"").append(createdAt != null ? createdAt : "").append("\"");
+
                 json.append("}");
                 first = false;
             }
