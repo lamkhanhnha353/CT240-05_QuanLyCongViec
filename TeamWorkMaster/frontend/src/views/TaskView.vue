@@ -11,12 +11,22 @@
       </button>
     </header>
 
-    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
-      <div class="w-full md:w-1/3 relative">
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row gap-4 justify-between items-center">
+      
+      <div class="w-full xl:w-1/3 relative">
         <input v-model="searchQuery" type="text" placeholder="🔍 Tìm kiếm tên công việc..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
       </div>
       
-      <div class="w-full md:w-auto flex flex-wrap gap-4 items-center">
+      <div class="w-full xl:w-auto flex flex-wrap gap-4 items-center">
+        
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-slate-500">Dự án:</span>
+          <select v-model="filterProject" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer text-slate-700">
+            <option value="ALL">Tất cả dự án</option>
+            <option v-for="project in mockProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
+          </select>
+        </div>
+
         <div class="flex items-center gap-2">
           <span class="text-sm font-bold text-slate-500">Trạng thái:</span>
           <select v-model="filterStatus" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer text-slate-700">
@@ -241,8 +251,8 @@ const editId = ref(null);
 const searchQuery = ref('');
 const sortBy = ref('default'); 
 const filterStatus = ref('ALL'); 
+const filterProject = ref('ALL'); // <-- BIẾN MỚI: Dùng để hứng giá trị chọn Dự án
 
-// Khớp với DB cũ: Không có startDate, không có assigner
 const formTask = ref({ title: '', projectId: '', priority: 'MEDIUM', progress: 'TODO', assignee: '', deadline: '', notes: '' });
 
 const formatStatus = (status) => {
@@ -270,19 +280,36 @@ const fetchTasks = async () => {
 const currentPage = ref(1);
 const tasksPerPage = 5;
 
-watch([searchQuery, filterStatus, sortBy], () => { currentPage.value = 1; });
+// Khi người dùng đổi bộ lọc dự án, trạng thái, hoặc tìm kiếm -> tự reset về trang 1
+watch([searchQuery, filterStatus, filterProject, sortBy], () => { currentPage.value = 1; });
 
 const filteredAndSortedTasks = computed(() => {
   let result = tasks.value;
-  if (searchQuery.value) result = result.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase()));
-  if (filterStatus.value !== 'ALL') result = result.filter(t => t.progress === filterStatus.value);
   
+  // 1. Lọc theo tìm kiếm tên
+  if (searchQuery.value) {
+    result = result.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase()));
+  }
+  
+  // 2. Lọc theo Trạng thái
+  if (filterStatus.value !== 'ALL') {
+    result = result.filter(t => t.progress === filterStatus.value);
+  }
+
+  // 3. LỌC THEO DỰ ÁN (MỚI THÊM)
+  if (filterProject.value !== 'ALL') {
+    // So sánh projectId của task với id của dự án đang chọn
+    result = result.filter(t => t.projectId === Number(filterProject.value));
+  }
+  
+  // 4. Sắp xếp
   if (sortBy.value === 'deadline') {
     result.sort((a, b) => (!a.deadline ? 1 : !b.deadline ? -1 : new Date(a.deadline) - new Date(b.deadline)));
   } else if (sortBy.value === 'priority') {
     const w = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
     result.sort((a, b) => (w[b.priority] || 0) - (w[a.priority] || 0));
   }
+  
   return result;
 });
 
