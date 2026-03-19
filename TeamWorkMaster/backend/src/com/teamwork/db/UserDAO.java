@@ -8,7 +8,8 @@ import java.sql.SQLException;
 public class UserDAO {
 
     public String login(String username, String password) {
-        String sql = "SELECT Role, IsActive, FullName FROM TBL_USERS WHERE Username = ? AND PasswordHash = ?";
+        // ĐÃ NÂNG CẤP: Lấy thêm ID để Frontend lưu lại
+        String sql = "SELECT ID, Role, IsActive, FullName FROM TBL_USERS WHERE Username = ? AND PasswordHash = ?";
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -17,12 +18,10 @@ public class UserDAO {
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                if (!rs.getBoolean("IsActive")) {
+                if (!rs.getBoolean("IsActive"))
                     return "BANNED";
-                }
-                System.out.println("[AUTH] Dang nhap thanh cong: " + rs.getString("FullName") + " | Quyen: "
-                        + rs.getString("Role"));
-                return rs.getString("Role");
+                // Trả về chuỗi chứa cả ID và Role (Ví dụ: "1-ADMIN" hoặc "2-MEMBER")
+                return rs.getInt("ID") + "-" + rs.getString("Role");
             }
             pstmt.close();
         } catch (SQLException e) {

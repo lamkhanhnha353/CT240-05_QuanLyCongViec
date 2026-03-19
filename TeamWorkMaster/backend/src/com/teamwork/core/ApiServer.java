@@ -6,6 +6,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.*;
+import com.teamwork.service.PermissionService;
 
 public class ApiServer {
     private HttpServer server;
@@ -45,7 +46,10 @@ public class ApiServer {
             return;
         }
         try {
-            sendResponse(ex, 200, new ProjectDAO().getAllProjectsJson());
+            // Lấy ID thật của người đang đăng nhập do Vue.js gửi lên Header
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+            sendResponse(ex, 200, new ProjectDAO().getAllProjectsJson(currentUserId));
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -57,68 +61,59 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             String name = extract(body, "name");
             String desc = extract(body, "desc");
             String start = extract(body, "startDate");
             String end = extract(body, "endDate");
+            String priority = extract(body, "priority");
+            if (priority.isEmpty())
+                priority = "MEDIUM";
 
-            // Tạm fix cứng ID người dùng đang đăng nhập là 1
-            int userId = 1;
+            // Lấy ID thật từ giao diện gửi xuống
+            int userId = Integer.parseInt(extract(body, "userId"));
 
-            int pid = new ProjectDAO().createProject(name, desc, start, end, userId);
-
+            int pid = new ProjectDAO().createProject(name, desc, start, end, priority, userId);
             if (pid != -1) {
-                // 1. Tự động tạo 3 cột trạng thái cho dự án
                 new StatusDAO().createDefaultStatus(pid);
-
-                // 2. Set quyền OWNER cho người tạo dự án
                 new ProjectMemberDAO().addOrUpdateMember(pid, userId, "OWNER");
-
-                // 3. Ghi log hoạt động
                 new ActivityLogDAO().log(pid, userId, "Đã khởi tạo dự án: " + name);
-
-                sendResponse(ex, 201, "{\"message\":\"Tạo thành công\", \"id\":" + pid + "}");
+                sendResponse(ex, 201, "{\"message\":\"Tạo thành công\"}");
             } else {
-                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại. Kiểm tra CSDL!\"}");
+                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại\"}");
             }
         } catch (Exception e) {
             sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
-    
+
     class LoginHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
-                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String role = userDAO.login(username, password);
+                    String username = extract(body, "username");
+                    String password = extract(body, "password");
+                    String loginResult = userDAO.login(username, password);
 
-                    if ("BANNED".equals(role)) {
-                        sendResponse(exchange, 403,
-                                "{\"success\": false, \"message\": \"Tài khoản của bạn đã bị khóa!\"}");
-                    } else if (role != null) {
-                        sendResponse(exchange, 200, "{\"success\": true, \"role\": \"" + role
-                                + "\", \"message\": \"Đăng nhập thành công\"}");
+                    if ("BANNED".equals(loginResult)) {
+                        sendResponse(exchange, 403, "{\"success\": false, \"message\": \"Tài khoản bị khóa!\"}");
+                    } else if (loginResult != null) {
+                        String[] parts = loginResult.split("-"); // Tách chuỗi ID-ROLE
+                        sendResponse(exchange, 200,
+                                "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \"" + parts[1] + "\"}");
                     } else {
-                        sendResponse(exchange, 401,
-                                "{\"success\": false, \"message\": \"Sai tài khoản hoặc mật khẩu!\"}");
+                        sendResponse(exchange, 401, "{\"success\": false, \"message\": \"Sai tài khoản/mật khẩu\"}");
                     }
                 } catch (Exception e) {
-                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
+                    sendResponse(exchange, 400, "{\"success\": false}");
                 }
             }
         }
@@ -317,9 +312,24 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int pid = Integer.parseInt(extract(body, "projectId"));
+            String priority = extract(body, "priority");
+            if (priority.isEmpty())
+                priority = "MEDIUM";
+
+            // ĐÃ FIX: Bắt ID thật từ Vue gửi lên
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            // LỚP GIÁP BẢO VỆ: Phải là MANAGER hoặc OWNER mới được Sửa
+            if (!new PermissionService().isManager(currentUserId, pid)) {
+                sendResponse(ex, 403,
+                        "{\"error\":\"Truy cập bị từ chối! Chỉ Trưởng dự án hoặc Quản lý mới được sửa.\"}");
+                return;
+            }
+
             boolean ok = new ProjectDAO().updateProject(pid, extract(body, "name"), extract(body, "desc"),
-                    extract(body, "status"), extract(body, "endDate"));
-            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xong\"}" : "{\"error\":\"Lỗi\"}");
+                    extract(body, "status"), extract(body, "endDate"), priority);
+            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xong\"}" : "{\"error\":\"Lỗi CSDL\"}");
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -334,8 +344,24 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int pid = Integer.parseInt(extract(body, "projectId"));
+
+            // ĐÃ FIX: Bắt ID thật từ Vue gửi lên
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            // LỚP GIÁP BẢO VỆ: Chỉ OWNER mới được Xóa dự án vĩnh viễn
+            if (!new PermissionService().isOwner(currentUserId, pid)) {
+                sendResponse(ex, 403, "{\"error\":\"Chỉ có Người tạo dự án (OWNER) mới có quyền xóa vĩnh viễn!\"}");
+                return;
+            }
+
             boolean ok = new ProjectDAO().deleteProject(pid);
-            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xóa xong\"}" : "{\"error\":\"Lỗi\"}");
+            if (ok) {
+                com.teamwork.kernel.PluginManager.notifyProjectDeleted(pid);
+                sendResponse(ex, 200, "{\"msg\":\"Xóa xong\"}");
+            } else {
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL\"}");
+            }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
