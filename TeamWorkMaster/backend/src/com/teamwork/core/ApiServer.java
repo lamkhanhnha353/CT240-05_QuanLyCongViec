@@ -1,142 +1,131 @@
 package com.teamwork.core;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-import com.teamwork.db.UserDAO;
-
-import java.io.IOException;
-import java.io.OutputStream;
+import com.sun.net.httpserver.*;
+import com.teamwork.db.*;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.*;
 
 public class ApiServer {
     private HttpServer server;
-    private UserDAO userDAO;
 
     public ApiServer(int port) throws IOException {
-        userDAO = new UserDAO();
-        // Mở cổng mạng (Ví dụ: 8080)
         server = HttpServer.create(new InetSocketAddress(port), 0);
-
-        // Tạo đường dẫn API (Endpoint) cho chức năng Đăng nhập & Đăng ký
-        server.createContext("/api/login", new LoginHandler());
-        server.createContext("/api/register", new RegisterHandler());
-
-        server.setExecutor(null); // Sử dụng luồng mặc định
+        
+        server.createContext("/api/projects/list", this::handleList);
+        server.createContext("/api/projects/create", this::handleCreate);
+        server.createContext("/api/projects/update", this::handleUpdate);
+        server.createContext("/api/projects/delete", this::handleDelete);
+        server.createContext("/api/projects/add-member", this::handleAddMember);
+        
+        server.setExecutor(null);
     }
 
     public void start() {
         server.start();
-        System.out.println("[API SERVER] Da khoi dong thanh cong tren cong " + server.getAddress().getPort());
-        System.out.println("[API SERVER] Dang lang nghe yeu cau tu Web Vue.js...");
+        System.out.println(">>> BACKEND ĐANG CHẠY TẠI CỔNG 8080");
+        System.out.println(">>> TRẠNG THÁI: SẴN SÀNG KẾT NỐI VỚI VUE");
     }
 
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
-    // ==========================================
-    // 1. LỚP XỬ LÝ ĐĂNG NHẬP (/api/login)
-    // ==========================================
-    class LoginHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
-
-            if ("POST".equals(exchange.getRequestMethod())) {
-                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Dang xu ly Dang nhap: " + requestBody);
-
-                String username = "";
-                String password = "";
-                try {
-                    // Cắt chuỗi giống hệt bên Đăng ký để đảm bảo không bao giờ lỗi
-                    username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
-                } catch (Exception e) {
-                    System.err.println("[LỖI CẮT CHUỖI JSON]: " + e.getMessage());
-                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu khong hop le\"}");
-                    return;
-                }
-
-                // In ra xem Java thực sự đọc được chữ gì
-                System.out.println("[API SERVER] Username doc duoc: [" + username + "]");
-                System.out.println("[API SERVER] Password doc duoc: [" + password + "]");
-
-                boolean isValid = userDAO.login(username, password);
-
-                String responseJson;
-                if (isValid) {
-                    responseJson = "{\"success\": true, \"message\": \"Dang nhap thanh cong\"}";
-                } else {
-                    responseJson = "{\"success\": false, \"message\": \"Sai tai khoan hoac mat khau\"}";
-                }
-
-                sendResponse(exchange, 200, responseJson);
-            } else {
-                sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phuong thuc khong ho tro\"}");
-            }
+    private void handleList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); return; }
+        try {
+            sendResponse(ex, 200, new ProjectDAO().getAllProjectsJson());
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 
-    // ==========================================
-    // 2. LỚP XỬ LÝ ĐĂNG KÝ (/api/register)
-    // ==========================================
-    class RegisterHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
-
-            if ("POST".equals(exchange.getRequestMethod())) {
-                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                System.out.println("[API SERVER] Nhan yeu cau dang ky...");
-
-                try {
-                    String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String fullName = requestBody.split("\"fullName\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String email = requestBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
-
-                    boolean isSuccess = userDAO.register(username, password, fullName, email);
-
-                    if (isSuccess) {
-                        sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Dang ky thanh cong\"}");
-                    } else {
-                        sendResponse(exchange, 400,
-                                "{\"success\": false, \"message\": \"Tai khoan hoac email da ton tai\"}");
-                    }
-                } catch (Exception e) {
-                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Du lieu gui len khong hop le\"}");
-                }
+    private void handleCreate(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); return; }
+        
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            String name = extract(body, "name");
+            String desc = extract(body, "desc");
+            String start = extract(body, "startDate");
+            String end = extract(body, "endDate");
+            
+            int pid = new ProjectDAO().createProject(name, desc, start, end, 1);
+            
+            if (pid != -1) {
+                sendResponse(ex, 201, "{\"message\":\"Tạo thành công\", \"id\":" + pid + "}");
             } else {
-                sendResponse(exchange, 405, "{\"success\": false, \"message\": \"Phuong thuc khong ho tro\"}");
+                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại\"}");
             }
+        } catch (Exception e) {
+            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 
-    // ==========================================
-    // 3. HÀM HỖ TRỢ GỬI PHẢN HỒI (Dùng chung)
-    // ==========================================
-    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
-        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-        exchange.sendResponseHeaders(statusCode, bytes.length);
-        OutputStream os = exchange.getResponseBody();
-        os.write(bytes);
-        os.close();
+    private void handleUpdate(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); return; }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int pid = Integer.parseInt(extract(body, "projectId"));
+            boolean ok = new ProjectDAO().updateProject(pid, extract(body, "name"), extract(body, "desc"), extract(body, "status"), extract(body, "endDate"));
+            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xong\"}" : "{\"error\":\"Lỗi\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleDelete(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); return; }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int pid = Integer.parseInt(extract(body, "projectId"));
+            boolean ok = new ProjectDAO().deleteProject(pid);
+            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xóa xong\"}" : "{\"error\":\"Lỗi\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleAddMember(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) { ex.sendResponseHeaders(204, -1); return; }
+        
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            // ĐÃ SỬA: Lấy email thay vì userId
+            String email = extract(body, "email");
+            String role = extract(body, "role");
+            
+            // Gọi hàm addMemberByEmail mới tạo
+            boolean ok = new ProjectMemberDAO().addMemberByEmail(projectId, email, role);
+            
+            if (ok) {
+                sendResponse(ex, 200, "{\"message\":\"Thêm thành viên thành công!\"}");
+            } else {
+                sendResponse(ex, 400, "{\"error\":\"Thêm thất bại. Email này chưa đăng ký tài khoản!\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleCors(HttpExchange ex) {
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
+    }
+
+    private String extract(String json, String key) {
+        Matcher m = Pattern.compile("\"" + key + "\":\\s*\"?(.*?)\"?(?:[,}]|\\s)").matcher(json);
+        return m.find() ? m.group(1).trim() : "";
+    }
+
+    private void sendResponse(HttpExchange ex, int code, String res) throws IOException {
+        byte[] b = res.getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().add("Content-Type", "application/json");
+        ex.sendResponseHeaders(code, b.length);
+        try (OutputStream os = ex.getResponseBody()) { os.write(b); }
     }
 }

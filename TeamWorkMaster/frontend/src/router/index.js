@@ -18,23 +18,28 @@ const router = createRouter({
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true } // Đánh dấu: Trang này cần phải có vé mới được vào
+    },
+    // 👇 THÊM TRANG QUẢN LÝ DỰ ÁN VÀO ĐÂY 👇
+    {
+      path: '/projects',
+      name: 'projects',
+      component: () => import('../views/ProjectsView.vue'),
+      meta: { requiresAuth: true } // Đánh dấu: Phải đăng nhập mới được vô tạo dự án
     }
   ]
 })
 
-//  Kiểm tra mọi lượt di chuyển trang
+// Kiểm tra mọi lượt di chuyển trang
 router.beforeEach((to, from, next) => {
   // Kiểm tra xem trong túi (localStorage) có vé không
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
   if (to.meta.requiresAuth && !isLoggedIn) {
-   
     alert('Truy cập bị từ chối! Vui lòng đăng nhập.');
     next('/');
   } else if ((to.path === '/' || to.path === '/register') && isLoggedIn) {
     next('/dashboard');
   } else {
-
     next();
   }
 })

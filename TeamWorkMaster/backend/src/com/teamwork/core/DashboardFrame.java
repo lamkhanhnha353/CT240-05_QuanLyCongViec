@@ -6,7 +6,6 @@ import com.teamwork.db.DatabaseConnection;
 import com.teamwork.kernel.PluginLoader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
 import javax.swing.*;
 
 /**
@@ -111,16 +110,23 @@ public class DashboardFrame extends JFrame implements IHostContext {
         
         // Sự kiện: Bật API Server
         itemStartApi.addActionListener(e -> {
-            try {
-                log("-> Đang khởi động API Server ở cổng 8080...");
-                ApiServer apiServer = new ApiServer(8080);
-                apiServer.start();
-                log("[HỆ THỐNG] API Server đã bật. Vue.js có thể kết nối ngay bây giờ!");
-                itemStartApi.setEnabled(false); // Bật rồi thì khóa nút lại để tránh bật 2 lần
-            } catch (IOException ex) {
-                log("[LỖI] Không thể bật API Server: " + ex.getMessage());
-            }
-        });
+    try {
+
+        log("-> Đang khởi động API Server ở cổng 8080");
+
+        ApiServer apiServer = new ApiServer(8080);
+        apiServer.start();
+
+        log("[HỆ THỐNG] API Server đã bật");
+
+        itemStartApi.setEnabled(false);
+
+    } catch (Exception ex) {
+
+        log("[Lỗi] Không thể bật API Server: " + ex.getMessage());
+
+    }
+});
 
         // Sự kiện: Nạp Plugin Quản Lý Project
 itemLoadProject.addActionListener((ActionEvent e) -> {

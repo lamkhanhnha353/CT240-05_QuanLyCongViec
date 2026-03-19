@@ -27,4 +27,12 @@ public class HelloWorldPlugin implements IPlugin {
     public void stop() {
         this.context.log("[PLUGIN] Đang tiến hành dừng và giải phóng tài nguyên...");
     }
+
+    @Override
+    public void onProjectDelete(int projectId) {
+        // Chỉ thêm đúng hàm này để không bị lỗi interface
+        if (this.context != null) {
+            this.context.log("[PLUGIN-HELLO] Bỏ qua sự kiện xóa dự án ID: " + projectId);
+        }
+    }
 }

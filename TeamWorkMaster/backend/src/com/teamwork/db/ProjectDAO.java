@@ -1,175 +1,88 @@
 package com.teamwork.db;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
-/**
- * Data Access Object cho Project
- */
 public class ProjectDAO {
 
-    /**
-     * Tạo project mới
-     * @return 
-     */
-    public boolean createProject(String name, String description, int userId) {
-
-    String sql = "INSERT INTO TBL_PROJECTS(ProjectName, Description, CreatedBy) VALUES(?,?,?)";
-
-    try {
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-
-        PreparedStatement pstmt = conn.prepareStatement(sql);
-
-        pstmt.setString(1, name);
-        pstmt.setString(2, description);
-        pstmt.setInt(3, userId);
-
-        int rows = pstmt.executeUpdate();
-
-        if (rows > 0) {
-            System.out.println("[ProjectDAO] Tao project thanh cong!");
-            return true;
+    // 1. TẠO DỰ ÁN (Đã khớp cột ProjectName, StartDate, CreatedBy...)
+    public int createProject(String name, String description, String startDate, String endDate, int userId) throws Exception {
+        // Dùng TBL_PROJECTS và các cột tương ứng trong SQL của bạn.
+        // Trạng thái mặc định theo SQL của bạn là 'PENDING'
+        String sql = "INSERT INTO TBL_PROJECTS (ProjectName, Description, StartDate, EndDate, Status, CreatedBy) VALUES (?, ?, ?, ?, 'PENDING', ?)";
+        
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            
+            pstmt.setString(1, name);
+            pstmt.setString(2, description);
+            pstmt.setString(3, startDate);
+            pstmt.setString(4, endDate);
+            pstmt.setInt(5, userId); // CreatedBy
+            
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                    if (rs.next()) return rs.getInt(1);
+                }
+            }
+            return -1;
         }
-
-        pstmt.close();
-
-    } catch (SQLException e) {
-
-        System.err.println("[ProjectDAO] Loi tao project: " + e.getMessage());
     }
 
-    return false;
-}
-
-    /**
-     * Hiển thị danh sách project
-     */
-    public void listProjects() {
-
-        String sql = "SELECT * FROM TBL_PROJECTS";
-
-        try {
-
-            Connection conn = DatabaseConnection.getInstance().getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            boolean empty = true;
-
+    // 2. LẤY DANH SÁCH (Đã khớp tên cột khi lấy ra)
+    public String getAllProjectsJson() throws Exception {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT * FROM TBL_PROJECTS ORDER BY ID DESC";
+        
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql)) {
+            
             while (rs.next()) {
+                if (json.length() > 1) json.append(",");
+                
+                // Escape các ký tự đặc biệt trong Description để không lỗi JSON
+                String desc = rs.getString("Description");
+                if (desc != null) desc = desc.replace("\"", "\\\"").replace("\n", "\\n");
 
-                empty = false;
-
-                System.out.println(
-                        "ProjectID=" + rs.getInt("ID")
-                        + " | Name=" + rs.getString("ProjectName")
-                        + " | Owner=" + rs.getInt("CreatedBy")
-                        + " | Status=" + rs.getString("Status")
-                );
+                json.append(String.format(
+                    "{\"id\":%d, \"name\":\"%s\", \"description\":\"%s\", \"status\":\"%s\", \"startDate\":\"%s\", \"endDate\":\"%s\", \"createdBy\":%d}",
+                    rs.getInt("ID"), 
+                    rs.getString("ProjectName"), 
+                    desc,
+                    rs.getString("Status"), 
+                    rs.getString("StartDate"), 
+                    rs.getString("EndDate"),
+                    rs.getInt("CreatedBy")
+                ));
             }
+        }
+        return json.append("]").toString();
+    }
 
-            if (empty) {
-                System.out.println("Không có project nào trong database.");
-            }
-
-            pstmt.close();
-
-        } catch (SQLException e) {
-            System.err.println("[ProjectDAO] Lỗi list project: " + e.getMessage());
+    // 3. CẬP NHẬT DỰ ÁN
+    public boolean updateProject(int projectId, String name, String description, String status, String endDate) throws Exception {
+        String sql = "UPDATE TBL_PROJECTS SET ProjectName = ?, Description = ?, Status = ?, EndDate = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, name);
+            pstmt.setString(2, description);
+            pstmt.setString(3, status);
+            pstmt.setString(4, endDate);
+            pstmt.setInt(5, projectId);
+            
+            return pstmt.executeUpdate() > 0;
         }
     }
 
-    /**
-     * Cập nhật project
-     */
-    public void updateProject(int projectId, String newName, String newDescription) {
-
-        String sql = "UPDATE TBL_PROJECTS SET ProjectName=?, Description=? WHERE ID=?";
-
-        try {
-
-            Connection conn = DatabaseConnection.getInstance().getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-
-            pstmt.setString(1, newName);
-            pstmt.setString(2, newDescription);
-            pstmt.setInt(3, projectId);
-
-            int rows = pstmt.executeUpdate();
-
-            if (rows > 0) {
-                System.out.println("[ProjectDAO] Cập nhật project thành công!");
-            } else {
-                System.out.println("[ProjectDAO] Không tìm thấy project để cập nhật.");
-            }
-
-            pstmt.close();
-
-        } catch (SQLException e) {
-            System.err.println("[ProjectDAO] Lỗi update project: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Xóa project
-     */
-    public void deleteProject(int projectId) {
-
-        String sql = "DELETE FROM TBL_PROJECTS WHERE ID=?";
-
-        try {
-
-            Connection conn = DatabaseConnection.getInstance().getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-
+    // 4. XÓA DỰ ÁN
+    public boolean deleteProject(int projectId) throws Exception {
+        String sql = "DELETE FROM TBL_PROJECTS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, projectId);
-
-            int rows = pstmt.executeUpdate();
-
-            if (rows > 0) {
-                System.out.println("[ProjectDAO] Xóa project thành công!");
-            } else {
-                System.out.println("[ProjectDAO] Không tìm thấy project để xóa.");
-            }
-
-            pstmt.close();
-
-        } catch (SQLException e) {
-            System.err.println("[ProjectDAO] Lỗi delete project: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Mời thành viên vào project
-     */
-    public void inviteMember(int projectId, int userId, String role) {
-
-        String sql = "INSERT INTO TBL_PROJECT_MEMBERS(ProjectID, UserID, Role) VALUES(?,?,?)";
-
-        try {
-
-            Connection conn = DatabaseConnection.getInstance().getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-
-            pstmt.setInt(1, projectId);
-            pstmt.setInt(2, userId);
-            pstmt.setString(3, role);
-
-            int rows = pstmt.executeUpdate();
-
-            if (rows > 0) {
-                System.out.println("[ProjectDAO] Mời thành viên vào project thành công!");
-            }
-
-            pstmt.close();
-
-        } catch (SQLException e) {
-            System.err.println("[ProjectDAO] Lỗi mời thành viên: " + e.getMessage());
+            return pstmt.executeUpdate() > 0;
         }
     }
 }
