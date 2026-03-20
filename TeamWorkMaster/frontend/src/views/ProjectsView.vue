@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#f8f9fa] flex font-sans">
     
-    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-10 shrink-0">
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
       <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
         <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg">T</div>
         <div>
@@ -9,7 +9,6 @@
           <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Marketing Dept</p>
         </div>
       </div>
-
       <nav class="flex-1 p-4 space-y-2">
         <router-link to="/dashboard" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
           <span>📊</span><span>Bảng điều khiển</span>
@@ -21,7 +20,6 @@
           <span>☑️</span><span>Công việc của tôi</span>
         </router-link>
       </nav>
-
       <div class="p-6">
         <button @click="handleLogout" class="w-full flex items-center justify-center py-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 font-bold rounded-xl transition-all">
           Đăng xuất
@@ -29,44 +27,68 @@
       </div>
     </aside>
 
-    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
       
-      <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0">
+      <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0 z-10">
         <h1 class="text-xl font-bold text-slate-800">Không gian làm việc</h1>
+        
         <div class="flex items-center space-x-6">
           <div class="relative">
             <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
             <input v-model="searchQuery" type="text" placeholder="Tìm kiếm dự án..." class="w-64 pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
           </div>
-          <div class="flex items-center space-x-3 border-l border-slate-200 pl-6">
+
+          <div class="relative" v-click-outside="() => showNotifMenu = false">
+            <button @click="toggleNotifMenu" class="relative p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-all">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+              <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">{{ unreadCount }}</span>
+            </button>
+
+            <div v-if="showNotifMenu" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden origin-top-right animate-fade-in">
+              <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Thông báo</h3>
+                <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-md">{{ unreadCount }} mới</span>
+              </div>
+              <div class="max-h-[350px] overflow-y-auto">
+                <div v-if="notifications.length === 0" class="p-6 text-center text-slate-400 text-sm font-medium">
+                  Bạn không có thông báo nào.
+                </div>
+                <div v-for="notif in notifications" :key="notif.id" class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors" :class="notif.isRead ? 'opacity-60' : 'bg-blue-50/30'">
+                  <p class="text-sm font-bold text-slate-800 mb-1">{{ notif.title }}</p>
+                  <p class="text-xs text-slate-600 leading-relaxed mb-3">{{ notif.message }}</p>
+                  
+                  <div v-if="!notif.isRead" class="flex space-x-2">
+                    <button @click="respondInvite(notif, true)" class="flex-1 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all">Đồng ý</button>
+                    <button @click="respondInvite(notif, false)" class="flex-1 py-1.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all">Từ chối</button>
+                  </div>
+                  <div v-else class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã xử lý</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-3 border-l border-slate-300 pl-6">
             <div class="text-right">
               <p class="text-sm font-bold text-slate-700">{{ currentUser }}</p>
-              <p class="text-xs text-slate-400 font-medium">Đang trực tuyến</p>
+              <p class="text-xs text-blue-500 font-bold">Đang trực tuyến</p>
             </div>
-            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md uppercase">{{ firstLetter }}</div>
+            <div class="w-10 h-10 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-black shadow-md uppercase">{{ firstLetter }}</div>
           </div>
         </div>
       </header>
 
       <div v-if="currentView === 'LIST'" class="p-10 overflow-y-auto h-full">
-        
         <transition name="fade" mode="out-in">
           
           <div v-if="isCreating" key="formView">
-            <CreateProjectForm 
-              :isEdit="isEditMode" 
-              :initialData="editData" 
-              @project-created="handleFormSuccess" 
-              @cancel="isCreating = false" 
-            />
+            <CreateProjectForm :isEdit="isEditMode" :initialData="editData" @project-created="handleFormSuccess" @cancel="isCreating = false" />
           </div>
 
           <div v-else key="listView">
-            
             <div class="flex justify-between items-center mb-8">
               <div>
                 <h2 class="text-3xl font-black text-slate-800">Tất cả Dự án</h2>
-                <p class="text-slate-500 mt-1 font-medium">Chọn một dự án để xem chi tiết bảng công việc (Kanban).</p>
+                <p class="text-slate-500 mt-1 font-medium">Chọn dự án để vào không gian làm việc. Các dự án đang chờ xác nhận sẽ không hiển thị ở đây.</p>
               </div>
               <button @click="openCreateForm" class="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 active:scale-95 transition-all">
                 + Khởi tạo Dự án
@@ -74,7 +96,6 @@
             </div>
 
             <div v-if="loading" class="text-center py-20 text-slate-400 font-bold">Đang tải dữ liệu...</div>
-            
             <div v-else-if="filteredProjects.length === 0" class="text-center py-20">
               <div class="text-6xl mb-4">📭</div>
               <h3 class="text-xl font-bold text-slate-700">Chưa có dự án nào</h3>
@@ -87,10 +108,9 @@
                   <button @click.stop="toggleMenu(p.id)" class="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                   </button>
-                  
                   <div v-if="activeMenu === p.id" class="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2 overflow-hidden">
                     <button v-if="['OWNER', 'MANAGER'].includes(p.myRole)" @click.stop="openEditForm(p)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 flex items-center"><span class="mr-2">✏️</span> Chỉnh sửa</button>
-                    <button @click.stop="openMemberModal(p)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 flex items-center"><span class="mr-2">👥</span> Thành viên</button>
+                    <button v-if="['OWNER', 'MANAGER'].includes(p.myRole)" @click.stop="openMemberModal(p)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 flex items-center"><span class="mr-2">👥</span> Mời thành viên</button>
                     <button @click.stop="toggleStar(p.id)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold flex items-center" :class="starredProjects.includes(p.id) ? 'text-slate-500' : 'text-yellow-600'">
                       <span class="mr-2">⭐</span> {{ starredProjects.includes(p.id) ? 'Bỏ đánh dấu' : 'Đánh dấu sao' }}
                     </button>
@@ -116,9 +136,7 @@
                 <div class="mb-5">
                   <div class="flex justify-between items-end mb-2">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ</span>
-                    <span class="text-sm font-black" :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'text-emerald-500' : 'text-blue-600'">
-                      {{ getProgress(p.completedTasks, p.totalTasks) }}%
-                    </span>
+                    <span class="text-sm font-black" :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'text-emerald-500' : 'text-blue-600'">{{ getProgress(p.completedTasks, p.totalTasks) }}%</span>
                   </div>
                   <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'bg-emerald-500' : 'bg-blue-600'" class="h-full rounded-full transition-all duration-1000 ease-out" :style="'width: ' + getProgress(p.completedTasks, p.totalTasks) + '%'"></div>
@@ -126,14 +144,8 @@
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-500">
-                  <div class="flex items-center space-x-1.5" :class="isDeadlineNear(p.endDate) ? 'text-red-500' : ''">
-                    <span>⏳</span>
-                    <span>{{ formatDate(p.endDate) }}</span>
-                  </div>
-                  <div class="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-200">
-                    <span class="text-blue-500">☑️</span>
-                    <span>{{ p.completedTasks }}/{{ p.totalTasks }} Task</span>
-                  </div>
+                  <div class="flex items-center space-x-1.5" :class="isDeadlineNear(p.endDate) ? 'text-red-500' : ''"><span>⏳</span><span>{{ formatDate(p.endDate) }}</span></div>
+                  <div class="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-200"><span class="text-blue-500">☑️</span><span>{{ p.completedTasks }}/{{ p.totalTasks }} Task</span></div>
                 </div>
 
               </div>
@@ -147,19 +159,15 @@
           <div class="flex items-center space-x-2 text-sm font-bold text-slate-400 mb-2 cursor-pointer w-fit hover:text-blue-600 transition-colors" @click="currentView = 'LIST'">
             <span>← Quay lại Danh sách Bảng</span>
           </div>
-          
           <div class="flex justify-between items-end">
-            <div>
-              <h1 class="text-3xl font-black text-slate-800 tracking-tight">{{ boardProject.name }}</h1>
-            </div>
+            <div><h1 class="text-3xl font-black text-slate-800 tracking-tight">{{ boardProject.name }}</h1></div>
             <div v-if="['OWNER', 'MANAGER'].includes(boardProject.myRole)" class="flex space-x-3">
               <button @click="openMemberModal(boardProject)" class="px-4 py-2 bg-blue-50 text-blue-600 font-bold rounded-xl hover:bg-blue-100 transition-all shadow-sm">
-                👥 Quản lý Nhóm
+                👥 Mời Thành Viên
               </button>
             </div>
           </div>
         </div>
-
         <div class="flex-1 p-10 flex items-center justify-center text-slate-400 font-bold text-xl">
           Khu vực Kanban Kéo Thả sẽ được tích hợp dữ liệu thật ở giai đoạn sau!
         </div>
@@ -167,25 +175,58 @@
 
     </main>
 
-    <div v-if="showMemberModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8">
-        <h2 class="text-2xl font-bold text-slate-800 mb-6">Mời thành viên</h2>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">Email người dùng</label>
-            <input v-model="newMember.email" type="email" placeholder="nhanvien@teamwork.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" />
+    <div v-if="showMemberModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 relative overflow-visible animate-fade-in">
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Mời vào dự án</h2>
+        <p class="text-sm text-slate-500 mb-6 font-medium">Dự án: <span class="font-bold text-slate-700">{{ selectedProject.name }}</span></p>
+        
+        <div class="space-y-5">
+          <div class="relative" v-click-outside="() => showDropdown = false">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tìm kiếm Username hoặc Email</label>
+            <div class="relative">
+              <span class="absolute left-4 top-3 text-slate-400">@</span>
+              <input 
+                v-model="memberSearchQuery" 
+                @input="handleSearchInput"
+                @focus="showDropdown = searchResults.length > 0"
+                type="text" 
+                autocomplete="off"
+                placeholder="Gõ tên hoặc email để tìm..." 
+                class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all" 
+              />
+              <div v-if="isSearching" class="absolute right-4 top-3.5">
+                <div class="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+            </div>
+
+            <div v-if="showDropdown && searchResults.length > 0" class="absolute w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
+              <div v-for="user in searchResults" :key="user.id" @click="selectUser(user)" class="flex items-center p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-50 transition-colors">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 font-bold text-xs uppercase mr-3">
+                  {{ user.fullName.charAt(0) }}
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800 leading-none">{{ user.fullName }} <span class="text-xs text-slate-400 font-medium ml-1">(@{{ user.username }})</span></p>
+                  <p class="text-xs text-slate-500 mt-1">{{ user.email }}</p>
+                </div>
+              </div>
+            </div>
           </div>
+
           <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">Vai trò (Role)</label>
-            <select v-model="newMember.role" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer bg-white">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cấp quyền (Role)</label>
+            <select v-model="newMemberRole" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer bg-white text-sm font-medium">
               <option value="MEMBER">👤 Thành viên (Chỉ xem và làm task)</option>
               <option value="MANAGER" v-if="selectedProject.myRole === 'OWNER'">💼 Quản lý (Sửa dự án, mời người)</option>
             </select>
           </div>
         </div>
+
         <div class="flex justify-end space-x-3 mt-8">
-          <button @click="showMemberModal = false" class="px-5 py-2.5 bg-slate-100 font-bold text-slate-600 rounded-xl hover:bg-slate-200">Hủy</button>
-          <button @click="addMember" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30">Gửi lời mời</button>
+          <button @click="showMemberModal = false" class="px-5 py-2.5 bg-slate-100 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-all">Hủy</button>
+          <button @click="submitInvite" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all flex items-center">
+            <span>Gửi lời mời</span>
+            <span class="ml-2">→</span>
+          </button>
         </div>
       </div>
     </div>
@@ -194,10 +235,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import CreateProjectForm from "../components/CreateProjectForm.vue"; 
 import { useToast } from "../composables/useToast";
+
+// --- CUSTOM DIRECTIVE (Click Outside để đóng menu) ---
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event, el);
+      }
+    };
+    document.body.addEventListener('click', el.clickOutsideEvent);
+  },
+  unmounted(el) {
+    document.body.removeEventListener('click', el.clickOutsideEvent);
+  }
+};
 
 const router = useRouter();
 const { addToast } = useToast();
@@ -213,27 +269,143 @@ const isCreating = ref(false);
 const isEditMode = ref(false);
 const editData = ref(null);
 const searchQuery = ref("");
-
 const boardProject = ref(null);
-const showMemberModal = ref(false);
-const selectedProject = ref({});
-const newMember = ref({ email: '', role: 'MEMBER' });
-
 const starredProjects = ref([]);
 
+// --- BIẾN CHO PHẦN THÔNG BÁO ---
+const notifications = ref([]);
+const showNotifMenu = ref(false);
+const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
+
+// --- BIẾN CHO PHẦN AUTO-SUGGEST MỜI THÀNH VIÊN ---
+const showMemberModal = ref(false);
+const selectedProject = ref({});
+const memberSearchQuery = ref("");
+const searchResults = ref([]);
+const isSearching = ref(false);
+const showDropdown = ref(false);
+const newMemberRole = ref('MEMBER');
+let searchTimeout = null; // Dùng cho Debounce
+
 onMounted(() => {
-  window.addEventListener('click', () => { activeMenu.value = null; });
   const storedUser = localStorage.getItem("username");
   if (storedUser) {
     currentUser.value = storedUser;
     firstLetter.value = storedUser.charAt(0).toUpperCase();
-    
     const storedStars = localStorage.getItem(`starred_${storedUser}`);
     if (storedStars) starredProjects.value = JSON.parse(storedStars);
   }
   fetchProjects(); 
+  fetchNotifications();
+  // Poll notifications mỗi 10 giây để tạo cảm giác Realtime
+  setInterval(fetchNotifications, 10000); 
 });
 
+// ==========================================
+// 1. LOGIC THÔNG BÁO (QUẢ CHUÔNG)
+// ==========================================
+const toggleNotifMenu = () => { showNotifMenu.value = !showNotifMenu.value; };
+
+const fetchNotifications = async () => {
+  const userId = localStorage.getItem("userId");
+  if (!userId) return;
+  try {
+    const response = await fetch("http://localhost:8080/api/notifications/list", { headers: { "User-ID": userId } });
+    if (response.ok) notifications.value = await response.json();
+  } catch (error) { console.error("Lỗi fetch thông báo", error); }
+};
+
+const respondInvite = async (notif, isAccept) => {
+  const userId = localStorage.getItem("userId");
+  try {
+    const payload = { notificationId: notif.id, projectId: notif.projectId, isAccept: isAccept };
+    const response = await fetch("http://localhost:8080/api/notifications/respond", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-ID": userId },
+      body: JSON.stringify(payload)
+    });
+    if (response.ok) {
+      addToast(isAccept ? "Đã tham gia dự án thành công!" : "Đã từ chối lời mời", "success");
+      fetchNotifications();
+      if(isAccept) fetchProjects(); // Render lại danh sách dự án nếu đồng ý
+    }
+  } catch (error) { addToast("Lỗi xử lý hệ thống!", "error"); }
+};
+
+// ==========================================
+// 2. LOGIC MỜI THÀNH VIÊN (AUTO-SUGGEST)
+// ==========================================
+const openMemberModal = (project) => { 
+  activeMenu.value = null; 
+  selectedProject.value = project; 
+  memberSearchQuery.value = ""; 
+  searchResults.value = [];
+  newMemberRole.value = 'MEMBER';
+  showMemberModal.value = true; 
+};
+
+// Hàm Debounce chống Spam API
+const handleSearchInput = () => {
+  clearTimeout(searchTimeout);
+  const q = memberSearchQuery.value.trim();
+  
+  if (q.length < 2) {
+    searchResults.value = [];
+    showDropdown.value = false;
+    return;
+  }
+
+  isSearching.value = true;
+  searchTimeout = setTimeout(async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/users/search?q=${q}`);
+      if (response.ok) {
+        searchResults.value = await response.json();
+        showDropdown.value = searchResults.value.length > 0;
+      }
+    } catch (error) {
+      console.error("Lỗi tìm kiếm", error);
+    } finally {
+      isSearching.value = false;
+    }
+  }, 400); // Đợi 0.4s ngừng gõ mới gọi API
+};
+
+const selectUser = (user) => {
+  memberSearchQuery.value = user.email; // Đẩy Email hoặc Username vào ô Input
+  showDropdown.value = false;
+};
+
+const submitInvite = async () => {
+  if (!memberSearchQuery.value) return addToast("Vui lòng nhập Username hoặc Email!", "warning");
+  try {
+    const payload = { 
+      projectId: selectedProject.value.id, 
+      projectName: selectedProject.value.name,
+      inviterName: currentUser.value,
+      identifier: memberSearchQuery.value, // Gửi chuỗi người dùng gõ xuống Backend
+      role: newMemberRole.value 
+    };
+    
+    const res = await fetch("http://localhost:8080/api/projects/add-member", { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(payload) 
+    });
+    
+    const result = await res.json();
+    if (res.ok) { 
+      addToast(result.message || "Đã gửi lời mời thành công!", "success"); 
+      showMemberModal.value = false; 
+    } else { 
+      addToast(result.error, "error"); 
+    }
+  } catch (error) { addToast("Lỗi khi thêm thành viên!", "error"); }
+};
+
+// ==========================================
+// 3. LOGIC DỰ ÁN CƠ BẢN (Giữ nguyên)
+// ==========================================
 const toggleStar = (id) => {
   activeMenu.value = null; 
   if (starredProjects.value.includes(id)) {
@@ -249,8 +421,7 @@ const toggleStar = (id) => {
 const filteredProjects = computed(() => {
   return projects.value.filter(p => {
     const searchStr = searchQuery.value.toLowerCase();
-    return p.name.toLowerCase().includes(searchStr) || 
-           (p.description && p.description.toLowerCase().includes(searchStr));
+    return p.name.toLowerCase().includes(searchStr) || (p.description && p.description.toLowerCase().includes(searchStr));
   });
 });
 
@@ -258,20 +429,14 @@ const fetchProjects = async () => {
   loading.value = true;
   try {
     const userId = localStorage.getItem("userId");
-    const response = await fetch("http://localhost:8080/api/projects/list", {
-      headers: { "User-ID": userId } 
-    });
+    const response = await fetch("http://localhost:8080/api/projects/list", { headers: { "User-ID": userId } });
     if (!response.ok) throw new Error("Lỗi mạng");
     projects.value = await response.json();
-  } catch (error) {
-    addToast("Không thể tải danh sách dự án!", "error");
-  } finally {
-    loading.value = false;
-  }
+  } catch (error) { addToast("Không thể tải danh sách dự án!", "error"); } 
+  finally { loading.value = false; }
 };
 
 const toggleMenu = (id) => { activeMenu.value = activeMenu.value === id ? null : id; };
-
 const openCreateForm = () => { isEditMode.value = false; editData.value = null; isCreating.value = true; };
 const openEditForm = (project) => { activeMenu.value = null; isEditMode.value = true; editData.value = project; isCreating.value = true; };
 const handleFormSuccess = () => { isCreating.value = false; fetchProjects(); };
@@ -283,33 +448,11 @@ const deleteProject = async (id) => {
   if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa vĩnh viễn dự án này không?`)) return;
   try {
     const userId = localStorage.getItem("userId");
-    const res = await fetch(`http://localhost:8080/api/projects/delete`, { 
-      method: 'POST', 
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-ID': userId 
-      },
-      body: JSON.stringify({ projectId: id }) 
-    });
-    const result = await res.json();
-    if (res.ok) { addToast("Đã xóa dự án vĩnh viễn!", "success"); fetchProjects(); } 
-    else { addToast(result.error, "error"); }
+    const res = await fetch(`http://localhost:8080/api/projects/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-ID': userId }, body: JSON.stringify({ projectId: id }) });
+    if (res.ok) { addToast("Đã xóa dự án vĩnh viễn!", "success"); fetchProjects(); } else { const r = await res.json(); addToast(r.error, "error"); }
   } catch (error) { addToast("Lỗi máy chủ khi xóa!", "error"); }
 };
 
-const openMemberModal = (project) => { activeMenu.value = null; selectedProject.value = project; newMember.value = { email: '', role: 'MEMBER' }; showMemberModal.value = true; };
-const addMember = async () => {
-  if (!newMember.value.email) return addToast("Vui lòng nhập Email!", "warning");
-  try {
-    const payload = { projectId: selectedProject.value.id, email: newMember.value.email, role: newMember.value.role };
-    const res = await fetch("http://localhost:8080/api/projects/add-member", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const result = await res.json();
-    if (res.ok) { addToast(`Đã gửi lời mời đến ${newMember.value.email}`, "success"); showMemberModal.value = false; } 
-    else { addToast(result.error, "error"); }
-  } catch (error) { addToast("Lỗi khi thêm thành viên!", "error"); }
-};
-
-// UI FORMATTERS
 const formatDate = (dateStr) => {
   if (!dateStr || dateStr === 'null') return 'Chưa có';
   const [year, month, day] = dateStr.split('-');
@@ -341,22 +484,9 @@ const getPriorityClass = (priority) => {
 </script>
 
 <style scoped>
-/* Hiệu ứng chuyển cảnh Mở/Đóng Form */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.line-clamp-2 { 
-  display: -webkit-box; 
-  -webkit-line-clamp: 2; 
-  line-clamp: 2;
-  -webkit-box-orient: vertical; 
-  overflow: hidden; 
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

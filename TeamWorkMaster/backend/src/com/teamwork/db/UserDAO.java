@@ -193,4 +193,36 @@ public class UserDAO {
         json.append("]");
         return json.toString();
     }
+
+    // Hàm tìm kiếm người dùng (Auto-suggest)
+    public String searchUsers(String keyword) {
+        StringBuilder json = new StringBuilder("[");
+        // Tìm kiếm cả Username và Email (Giới hạn 5 người để giao diện không bị tràn)
+        String sql = "SELECT ID, Username, Email, FullName FROM TBL_USERS WHERE (Username LIKE ? OR Email LIKE ?) AND IsActive = 1 LIMIT 5";
+        try {
+            Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            // Thêm dấu % để tìm kiếm chứa từ khóa
+            pstmt.setString(1, "%" + keyword + "%");
+            pstmt.setString(2, "%" + keyword + "%");
+            ResultSet rs = pstmt.executeQuery();
+
+            boolean first = true;
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+                json.append("{")
+                        .append("\"id\":").append(rs.getInt("ID")).append(",")
+                        .append("\"username\":\"").append(rs.getString("Username")).append("\",")
+                        .append("\"email\":\"").append(rs.getString("Email")).append("\",")
+                        .append("\"fullName\":\"").append(rs.getString("FullName")).append("\"")
+                        .append("}");
+                first = false;
+            }
+            pstmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
+    }
 }

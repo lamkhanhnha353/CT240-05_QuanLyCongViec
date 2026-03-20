@@ -30,12 +30,16 @@ public class ApiServer {
         server.createContext("/api/admin/users/delete", new AdminDeleteUserHandler());
         server.createContext("/api/admin/users/toggle-lock", new AdminToggleLockUserHandler());
 
+        server.createContext("/api/users/search", this::handleSearchUsers);
+        server.createContext("/api/notifications/list", this::handleGetNotifications);
+        server.createContext("/api/notifications/respond", this::handleRespondInvite);
+
         server.setExecutor(null);
     }
 
     public void start() {
         server.start();
-        System.out.println(">>> BACKEND ĐANG CHẠY TẠI CỔNG 8080");
+        System.out.println(">>> BACKEND ĐANG CHẠY TẠI CỔNG " + server.getAddress().getPort());
         System.out.println(">>> TRẠNG THÁI: SẴN SÀNG KẾT NỐI VỚI VUE");
     }
 
@@ -46,7 +50,6 @@ public class ApiServer {
             return;
         }
         try {
-            // Lấy ID thật của người đang đăng nhập do Vue.js gửi lên Header
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
             sendResponse(ex, 200, new ProjectDAO().getAllProjectsJson(currentUserId));
@@ -71,7 +74,6 @@ public class ApiServer {
             if (priority.isEmpty())
                 priority = "MEDIUM";
 
-            // Lấy ID thật từ giao diện gửi xuống
             int userId = Integer.parseInt(extract(body, "userId"));
 
             int pid = new ProjectDAO().createProject(name, desc, start, end, priority, userId);
@@ -106,7 +108,7 @@ public class ApiServer {
                     if ("BANNED".equals(loginResult)) {
                         sendResponse(exchange, 403, "{\"success\": false, \"message\": \"Tài khoản bị khóa!\"}");
                     } else if (loginResult != null) {
-                        String[] parts = loginResult.split("-"); // Tách chuỗi ID-ROLE
+                        String[] parts = loginResult.split("-");
                         sendResponse(exchange, 200,
                                 "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \"" + parts[1] + "\"}");
                     } else {
@@ -122,14 +124,11 @@ public class ApiServer {
     class RegisterHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
@@ -154,9 +153,7 @@ public class ApiServer {
     class AdminGetUsersHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
@@ -169,14 +166,11 @@ public class ApiServer {
     class AdminCreateUserHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
@@ -186,7 +180,6 @@ public class ApiServer {
                     String password = reqBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
 
                     int result = userDAO.addUserByAdmin(username, password, fullname, email);
-
                     if (result == 1)
                         sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Tạo tài khoản thành công!\"}");
                     else if (result == -1)
@@ -207,14 +200,11 @@ public class ApiServer {
     class AdminUpdateUserHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
@@ -231,7 +221,6 @@ public class ApiServer {
                     }
 
                     int result = userDAO.updateUser(id, fullname, email, password);
-
                     if (result == 1)
                         sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Cập nhật thành công!\"}");
                     else if (result == -2)
@@ -249,14 +238,11 @@ public class ApiServer {
     class AdminDeleteUserHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
@@ -278,14 +264,11 @@ public class ApiServer {
     class AdminToggleLockUserHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+            handleCors(exchange);
             if ("OPTIONS".equals(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
@@ -316,11 +299,9 @@ public class ApiServer {
             if (priority.isEmpty())
                 priority = "MEDIUM";
 
-            // ĐÃ FIX: Bắt ID thật từ Vue gửi lên
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-            // LỚP GIÁP BẢO VỆ: Phải là MANAGER hoặc OWNER mới được Sửa
             if (!new PermissionService().isManager(currentUserId, pid)) {
                 sendResponse(ex, 403,
                         "{\"error\":\"Truy cập bị từ chối! Chỉ Trưởng dự án hoặc Quản lý mới được sửa.\"}");
@@ -344,12 +325,9 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int pid = Integer.parseInt(extract(body, "projectId"));
-
-            // ĐÃ FIX: Bắt ID thật từ Vue gửi lên
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-            // LỚP GIÁP BẢO VỆ: Chỉ OWNER mới được Xóa dự án vĩnh viễn
             if (!new PermissionService().isOwner(currentUserId, pid)) {
                 sendResponse(ex, 403, "{\"error\":\"Chỉ có Người tạo dự án (OWNER) mới có quyền xóa vĩnh viễn!\"}");
                 return;
@@ -367,27 +345,101 @@ public class ApiServer {
         }
     }
 
+    // 💥 ĐÂY LÀ HÀM QUAN TRỌNG NHẤT ĐÃ ĐƯỢC SỬA 💥
     private void handleAddMember(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int projectId = Integer.parseInt(extract(body, "projectId"));
-            // ĐÃ SỬA: Lấy email thay vì userId
-            String email = extract(body, "email");
+
+            String identifier = extract(body, "identifier");
+            if (identifier.isEmpty())
+                identifier = extract(body, "email");
+            identifier = identifier.trim();
+            if (identifier.startsWith("@"))
+                identifier = identifier.substring(1).trim();
+
             String role = extract(body, "role");
+            String projectName = extract(body, "projectName");
+            String inviterName = extract(body, "inviterName");
 
-            // Gọi hàm addMemberByEmail mới tạo
-            boolean ok = new ProjectMemberDAO().addMemberByEmail(projectId, email, role);
+            if (projectName.isEmpty())
+                projectName = "Dự án #" + projectId;
+            if (inviterName.isEmpty())
+                inviterName = "Quản lý dự án";
 
-            if (ok) {
-                sendResponse(ex, 200, "{\"message\":\"Thêm thành viên thành công!\"}");
+            // Gọi hàm inviteMember có chứa gửi Email và Chuông thông báo
+            String result = new ProjectMemberDAO().inviteMember(projectId, projectName, identifier, role, inviterName);
+
+            if ("SUCCESS".equals(result)) {
+                sendResponse(ex, 200, "{\"message\":\"Đã gửi lời mời và Email thành công!\"}");
             } else {
-                sendResponse(ex, 400, "{\"error\":\"Thêm thất bại. Email này chưa đăng ký tài khoản!\"}");
+                sendResponse(ex, 400, "{\"error\":\"" + result + "\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleSearchUsers(HttpExchange ex) throws java.io.IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String query = ex.getRequestURI().getQuery();
+            String keyword = "";
+            if (query != null && query.contains("q=")) {
+                keyword = query.split("q=")[1].split("&")[0];
+                keyword = java.net.URLDecoder.decode(keyword, StandardCharsets.UTF_8.name());
+            }
+            sendResponse(ex, 200, userDAO.searchUsers(keyword));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleGetNotifications(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+            sendResponse(ex, 200, new NotificationDAO().getUserNotifications(currentUserId));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleRespondInvite(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int notifId = Integer.parseInt(extract(body, "notificationId"));
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            boolean isAccept = Boolean.parseBoolean(extract(body, "isAccept"));
+
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            boolean ok = new ProjectMemberDAO().respondToInvite(currentUserId, projectId, isAccept);
+            if (ok) {
+                new NotificationDAO().markAsRead(notifId);
+                sendResponse(ex, 200, "{\"message\":\"Đã xử lý lời mời!\"}");
+            } else {
+                sendResponse(ex, 400, "{\"error\":\"Lỗi xử lý hệ thống!\"}");
             }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
@@ -396,8 +448,8 @@ public class ApiServer {
 
     private void handleCors(HttpExchange ex) {
         ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "*");
-        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, User-ID");
     }
 
     private String extract(String json, String key) {

@@ -36,7 +36,7 @@ public class ProjectDAO {
                 "(SELECT COUNT(*) FROM TBL_TASKS WHERE ProjectID = p.ID AND Status = 'DONE') as CompletedTasks " +
                 "FROM TBL_PROJECTS p " +
                 "INNER JOIN TBL_PROJECT_MEMBERS pm ON p.ID = pm.ProjectID " +
-                "WHERE pm.UserID = ? ORDER BY p.ID DESC";
+                "WHERE pm.UserID = ? AND pm.InviteStatus = 'JOINED' ORDER BY p.ID DESC";
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -58,6 +58,35 @@ public class ProjectDAO {
                         rs.getString("StartDate"), rs.getString("EndDate"), rs.getInt("OwnerID"),
                         rs.getString("MyRole"), rs.getInt("TotalTasks"), rs.getInt("CompletedTasks")));
                 first = false;
+            }
+        } catch (SQLException ex) {
+            // Nếu schema cũ chưa có InviteStatus, thử không lọc theo InviteStatus
+            String fallbackSql = "SELECT p.*, pm.Role as MyRole, " +
+                    "(SELECT COUNT(*) FROM TBL_TASKS WHERE ProjectID = p.ID) as TotalTasks, " +
+                    "(SELECT COUNT(*) FROM TBL_TASKS WHERE ProjectID = p.ID AND Status = 'DONE') as CompletedTasks " +
+                    "FROM TBL_PROJECTS p " +
+                    "INNER JOIN TBL_PROJECT_MEMBERS pm ON p.ID = pm.ProjectID " +
+                    "WHERE pm.UserID = ? ORDER BY p.ID DESC";
+            try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                    PreparedStatement pstmt = conn.prepareStatement(fallbackSql)) {
+                pstmt.setInt(1, currentUserId);
+                ResultSet rs = pstmt.executeQuery();
+                boolean first = true;
+                while (rs.next()) {
+                    if (!first)
+                        json.append(",");
+                    String desc = rs.getString("Description");
+                    if (desc != null)
+                        desc = desc.replace("\"", "\\\"").replace("\n", "\\n");
+
+                    json.append(String.format(
+                            "{\"id\":%d, \"name\":\"%s\", \"description\":\"%s\", \"status\":\"%s\", \"priority\":\"%s\", \"startDate\":\"%s\", \"endDate\":\"%s\", \"ownerId\":%d, \"myRole\":\"%s\", \"totalTasks\":%d, \"completedTasks\":%d}",
+                            rs.getInt("ID"), rs.getString("ProjectName"), desc, rs.getString("Status"),
+                            rs.getString("Priority") != null ? rs.getString("Priority") : "MEDIUM",
+                            rs.getString("StartDate"), rs.getString("EndDate"), rs.getInt("OwnerID"),
+                            rs.getString("MyRole"), rs.getInt("TotalTasks"), rs.getInt("CompletedTasks")));
+                    first = false;
+                }
             }
         }
         return json.append("]").toString();
