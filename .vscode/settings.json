@@ -2,5 +2,6 @@
   "java.project.referencedLibraries": [
     "lib/**/*.jar",
     "TeamWorkMaster/backend/lib/mysql-connector-j-9.6.0.jar"
-  ]
+  ],
+  "java.debug.settings.onBuildFailureProceed": true
 }

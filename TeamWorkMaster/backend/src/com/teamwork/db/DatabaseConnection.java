@@ -1,9 +1,9 @@
 package com.teamwork.db;
 
+import com.teamwork.core.GlobalExceptionHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import com.teamwork.core.GlobalExceptionHandler;
 
 /**
  * Lớp quản lý kết nối cơ sở dữ liệu MySQL.
