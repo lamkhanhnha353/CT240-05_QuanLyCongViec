@@ -6,7 +6,6 @@ public class Comment {
     private String content;
     private String time;
 
-    // Constructors
     public Comment(String id, String user, String content, String time) {
         this.id = id;
         this.user = user;
@@ -14,7 +13,6 @@ public class Comment {
         this.time = time;
     }
 
-    // Getters
     public String getId() {
         return id;
     }

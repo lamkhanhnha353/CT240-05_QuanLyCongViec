@@ -6,5 +6,6 @@
   "java.project.sourcePaths": [
     "TeamWorkMaster/backend/src",
     "TeamWorkMaster/frontend"
-  ]
+  ],
+  "java.debug.settings.onBuildFailureProceed": true
 }

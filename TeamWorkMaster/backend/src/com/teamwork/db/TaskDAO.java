@@ -1,59 +1,123 @@
 package com.teamwork.db;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class TaskDAO {
 
-    /**
-     * Hàm đếm số lượng công việc theo trạng thái
-     * Trả về mảng 3 số nguyên tương ứng: [Số lượng To Do, Số lượng In Progress, Số
-     * lượng Done]
-     */
-    public int[] getTaskStatistics() {
-        int[] stats = new int[3]; // Khởi tạo mảng có 3 phần tử mặc định là 0
-
-        // Mình giả định bảng tên là 'tasks' và cột trạng thái là 'status'.
-        // (Nếu database của nhóm dùng 'tbl_tasks' hay cột tên khác thì bạn chỉ cần sửa
-        // lại câu SQL này nhé)
-        String sql = "SELECT status, COUNT(*) as total FROM tasks GROUP BY status";
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-
-        if (conn == null) {
-            System.err.println("[TaskDAO] Lỗi: Không thể lấy kết nối Database.");
-            return stats;
-        }
-
-        try (PreparedStatement stmt = conn.prepareStatement(sql);
-                ResultSet rs = stmt.executeQuery()) {
-
+    public String getTasksByProject(int projectId) {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT t.*, u.FullName as AssigneeName, u.Email as AssigneeEmail " +
+                "FROM TBL_TASKS t LEFT JOIN TBL_USERS u ON t.AssigneeID = u.ID " +
+                "WHERE t.ProjectID = ? ORDER BY t.CreatedAt DESC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, projectId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
             while (rs.next()) {
-                String status = rs.getString("status");
-                int count = rs.getInt("total");
-
-                if (status != null) {
-                    // Chuyển về chữ thường để dễ so sánh, phòng trường hợp viết hoa viết thường
-                    // khác nhau
-                    String s = status.toLowerCase();
-
-                    // Phân loại thông minh vào 3 nhóm
-                    if (s.contains("to do") || s.contains("todo") || s.equals("0")) {
-                        stats[0] += count; // Cộng vào nhóm To Do
-                    } else if (s.contains("in progress") || s.contains("progress") || s.equals("1")) {
-                        stats[1] += count; // Cộng vào nhóm In Progress
-                    } else if (s.contains("done") || s.equals("2")) {
-                        stats[2] += count; // Cộng vào nhóm Done
-                    }
-                }
+                if (!first)
+                    json.append(",");
+                json.append("{")
+                        .append("\"id\":").append(rs.getInt("ID")).append(",")
+                        .append("\"title\":\"").append(escapeJson(rs.getString("Title"))).append("\",")
+                        .append("\"description\":\"").append(escapeJson(rs.getString("Description"))).append("\",")
+                        .append("\"priority\":\"").append(rs.getString("Priority")).append("\",")
+                        .append("\"deadline\":\"").append(rs.getString("Deadline")).append("\",")
+                        .append("\"status\":\"").append(rs.getString("Status")).append("\",")
+                        .append("\"assigneeId\":").append(rs.getInt("AssigneeID")).append(",")
+                        .append("\"assigneeName\":\"").append(escapeJson(rs.getString("AssigneeName"))).append("\"")
+                        .append("}");
+                first = false;
             }
         } catch (SQLException e) {
-            System.err.println("[TaskDAO] Lỗi khi thống kê công việc: " + e.getMessage());
             e.printStackTrace();
         }
+        return json.append("]").toString();
+    }
 
-        return stats;
+    public boolean createTask(int projectId, String title, String description, String priority, String deadline,
+            int assigneeId) {
+        String sql = "INSERT INTO TBL_TASKS (ProjectID, Title, Description, Priority, Deadline, AssigneeID, Status) VALUES (?, ?, ?, ?, ?, ?, 'TODO')";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, projectId);
+            pstmt.setString(2, title);
+            pstmt.setString(3, description);
+            pstmt.setString(4, priority);
+
+            if (deadline == null || deadline.trim().isEmpty() || deadline.equals("null"))
+                pstmt.setNull(5, Types.DATE);
+            else
+                pstmt.setDate(5, Date.valueOf(deadline));
+
+            if (assigneeId <= 0)
+                pstmt.setNull(6, Types.INTEGER);
+            else
+                pstmt.setInt(6, assigneeId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean updateTaskStatus(int taskId, String status) {
+        String sql = "UPDATE TBL_TASKS SET Status = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, status);
+            pstmt.setInt(2, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // --- HÀM XÓA THẺ ---
+    public boolean deleteTask(int taskId) {
+        String sql = "DELETE FROM TBL_TASKS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // --- HÀM CẬP NHẬT THÔNG TIN THẺ (GIAO VIỆC) ---
+    public boolean updateTaskDetails(int taskId, String title, String description, String priority, String deadline,
+            int assigneeId) {
+        String sql = "UPDATE TBL_TASKS SET Title = ?, Description = ?, Priority = ?, Deadline = ?, AssigneeID = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, title);
+            pstmt.setString(2, description);
+            pstmt.setString(3, priority);
+
+            if (deadline == null || deadline.trim().isEmpty() || deadline.equals("null"))
+                pstmt.setNull(4, Types.DATE);
+            else
+                pstmt.setDate(4, Date.valueOf(deadline));
+
+            if (assigneeId <= 0)
+                pstmt.setNull(5, Types.INTEGER);
+            else
+                pstmt.setInt(5, assigneeId);
+
+            pstmt.setInt(6, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private String escapeJson(String data) {
+        if (data == null)
+            return "";
+        return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
     }
 }

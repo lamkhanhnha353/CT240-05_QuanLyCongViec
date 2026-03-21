@@ -2,13 +2,11 @@ package com.teamwork.core;
 
 import com.teamwork.contract.IHostContext;
 import com.teamwork.contract.IPlugin;
-import com.teamwork.kernel.PluginLoader;
 import com.teamwork.db.DatabaseConnection;
-
-import javax.swing.*;
+import com.teamwork.kernel.PluginLoader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
+import javax.swing.*;
 
 /**
  * Container chính của hệ thống (Đóng vai trò là Bảng điều khiển Server).
@@ -40,13 +38,15 @@ public class DashboardFrame extends JFrame implements IHostContext {
         JMenuItem itemTestDB = new JMenuItem("Test Kết nối MySQL"); // Nút test Database
         JMenuItem itemExit = new JMenuItem("Thoát Server");
         JMenuItem itemStartApi = new JMenuItem("Bật API Server (Cho phép Web kết nối)");
-
+        JMenuItem itemLoadProject = new JMenuItem("Nạp Plugin Quản Lý Project");
+        
         menuSystem.add(itemLoadPlugin);
         menuSystem.add(itemLoadStats);
         menuSystem.addSeparator();
         menuSystem.add(itemTestDB); // Thêm nút test Database vào Menu
         menuSystem.add(itemStartApi); // Thêm dòng này vào dưới nút itemTestDB
         menuSystem.addSeparator();
+        menuSystem.add(itemLoadProject);
         menuSystem.add(itemExit);
         menuBar.add(menuSystem);
         setJMenuBar(menuBar);
@@ -110,16 +110,50 @@ public class DashboardFrame extends JFrame implements IHostContext {
         
         // Sự kiện: Bật API Server
         itemStartApi.addActionListener(e -> {
-            try {
-                log("-> Đang khởi động API Server ở cổng 8080...");
-                ApiServer apiServer = new ApiServer(8080);
-                apiServer.start();
-                log("[HỆ THỐNG] API Server đã bật. Vue.js có thể kết nối ngay bây giờ!");
-                itemStartApi.setEnabled(false); // Bật rồi thì khóa nút lại để tránh bật 2 lần
-            } catch (IOException ex) {
-                log("[LỖI] Không thể bật API Server: " + ex.getMessage());
-            }
-        });
+    try {
+
+        log("-> Đang khởi động API Server ở cổng 8080");
+
+        ApiServer apiServer = new ApiServer(8080);
+        apiServer.start();
+
+        log("[HỆ THỐNG] API Server đã bật");
+
+        itemStartApi.setEnabled(false);
+
+    } catch (Exception ex) {
+
+        log("[Lỗi] Không thể bật API Server: " + ex.getMessage());
+
+    }
+});
+
+        // Sự kiện: Nạp Plugin Quản Lý Project
+itemLoadProject.addActionListener((ActionEvent e) -> {
+
+    log("-> Đang nạp Project Plugin...");
+
+    pluginLoader.loadPluginClass("com.teamwork.plugins.ProjectPlugin");
+
+    int lastIndex = pluginLoader.getLoadedPlugins().size() - 1;
+
+    if (lastIndex >= 0) {
+
+        IPlugin projectPlugin = pluginLoader.getLoadedPlugins().get(lastIndex);
+
+        try {
+
+            projectPlugin.initialize(this);
+            projectPlugin.start();
+
+        } catch (Exception ex) {
+
+            GlobalExceptionHandler.handle("Chạy Project Plugin", ex);
+
+        }
+    }
+});
+
     }
 
     @Override

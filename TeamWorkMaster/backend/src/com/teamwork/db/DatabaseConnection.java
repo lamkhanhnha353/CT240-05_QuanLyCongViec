@@ -1,9 +1,9 @@
 package com.teamwork.db;
 
+import com.teamwork.core.GlobalExceptionHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import com.teamwork.core.GlobalExceptionHandler;
 
 /**
  * Lớp quản lý kết nối cơ sở dữ liệu MySQL.
@@ -22,7 +22,7 @@ public class DatabaseConnection {
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "755235";
+    private final String PASSWORD = "20022005nha@";
 
     // 2. Constructor được set là 'private' để các class khác không thể dùng từ khóa
     // 'new'
