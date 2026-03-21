@@ -6,14 +6,12 @@ import com.teamwork.db.DatabaseConnection;
 import com.teamwork.kernel.PluginLoader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
 import javax.swing.*;
 
 /**
  * Container chính của hệ thống (Đóng vai trò là Bảng điều khiển Server).
  */
 public class DashboardFrame extends JFrame implements IHostContext {
-
     private JTextArea logArea;
     private PluginLoader pluginLoader;
 
@@ -37,17 +35,21 @@ public class DashboardFrame extends JFrame implements IHostContext {
 
         JMenuItem itemLoadPlugin = new JMenuItem("Nạp Hello World Plugin");
         JMenuItem itemLoadStats = new JMenuItem("Chạy Plugin Thống Kê (Test Đa Luồng)");
-        JMenuItem itemTestDB = new JMenuItem("Test Kết nối MySQL"); // Nút test Database
-        JMenuItem itemExit = new JMenuItem("Thoát Server");
+        JMenuItem itemTestDB = new JMenuItem("Test Kết nối MySQL");
         JMenuItem itemStartApi = new JMenuItem("Bật API Server (Cho phép Web kết nối)");
+        JMenuItem itemLoadProject = new JMenuItem("Nạp Plugin Quản Lý Project");
+        JMenuItem itemExit = new JMenuItem("Thoát Server");
 
         menuSystem.add(itemLoadPlugin);
         menuSystem.add(itemLoadStats);
         menuSystem.addSeparator();
-        menuSystem.add(itemTestDB); // Thêm nút test Database vào Menu
-        menuSystem.add(itemStartApi); // Thêm dòng này vào dưới nút itemTestDB
+        menuSystem.add(itemTestDB);
+        menuSystem.add(itemStartApi);
+        menuSystem.addSeparator();
+        menuSystem.add(itemLoadProject);
         menuSystem.addSeparator();
         menuSystem.add(itemExit);
+
         menuBar.add(menuSystem);
         setJMenuBar(menuBar);
 
@@ -62,14 +64,10 @@ public class DashboardFrame extends JFrame implements IHostContext {
         // 3. Xử lý sự kiện Menu
         itemExit.addActionListener(e -> System.exit(0));
 
-        // Sự kiện 1: Nạp Hello World Plugin
+        // Sự kiện: Nạp Hello World Plugin
         itemLoadPlugin.addActionListener((ActionEvent e) -> {
             log("-> Đang tiến hành quét và nạp plugin bằng Reflection...");
-
-            // Nạp class động
             pluginLoader.loadPluginClass("com.teamwork.plugins.HelloWorldPlugin");
-
-            // Khởi chạy các plugin vừa nạp
             for (IPlugin plugin : pluginLoader.getLoadedPlugins()) {
                 try {
                     plugin.initialize(this); // DashboardFrame đóng vai trò là IHostContext
@@ -80,13 +78,10 @@ public class DashboardFrame extends JFrame implements IHostContext {
             }
         });
 
-        // Sự kiện 2: Nạp Statistics Plugin (Test Đa luồng)
+        // Sự kiện: Nạp Statistics Plugin (Của đồng đội)
         itemLoadStats.addActionListener((ActionEvent e) -> {
             log("-> Đang yêu cầu nạp Plugin Thống kê...");
             pluginLoader.loadPluginClass("com.teamwork.plugins.StatisticsPlugin");
-
-            // Lấy plugin vừa nạp (giả định là phần tử cuối cùng trong list để không chạy
-            // lại plugin cũ)
             int lastIndex = pluginLoader.getLoadedPlugins().size() - 1;
             if (lastIndex >= 0) {
                 IPlugin statsPlugin = pluginLoader.getLoadedPlugins().get(lastIndex);
@@ -99,10 +94,9 @@ public class DashboardFrame extends JFrame implements IHostContext {
             }
         });
 
-        // Sự kiện 3: Test kết nối Database (Singleton)
+        // Sự kiện: Test kết nối Database
         itemTestDB.addActionListener((ActionEvent e) -> {
             log("-> Đang thử kết nối tới Cơ sở dữ liệu MySQL...");
-            // Lần gọi getInstance() đầu tiên sẽ kích hoạt việc mở kết nối tới DB
             DatabaseConnection.getInstance();
             log("[HỆ THỐNG] Lệnh gọi DatabaseConnection đã thực thi xong.");
         });
@@ -113,10 +107,26 @@ public class DashboardFrame extends JFrame implements IHostContext {
                 log("-> Đang khởi động API Server ở cổng 8080...");
                 ApiServer apiServer = new ApiServer(8080);
                 apiServer.start();
-                log("[HỆ THỐNG] API Server đã bật. Vue.js có thể kết nối ngay bây giờ!");
-                itemStartApi.setEnabled(false); // Bật rồi thì khóa nút lại để tránh bật 2 lần
-            } catch (IOException ex) {
+                log("[HỆ THỐNG] API Server đã bật. Web Vue.js có thể kết nối!");
+                itemStartApi.setEnabled(false); // Khóa nút sau khi bật thành công
+            } catch (Exception ex) {
                 log("[LỖI] Không thể bật API Server: " + ex.getMessage());
+            }
+        });
+
+        // Sự kiện: Nạp Plugin Quản Lý Project (Của bạn)
+        itemLoadProject.addActionListener((ActionEvent e) -> {
+            log("-> Đang nạp Project Plugin...");
+            pluginLoader.loadPluginClass("com.teamwork.plugins.ProjectPlugin");
+            int lastIndex = pluginLoader.getLoadedPlugins().size() - 1;
+            if (lastIndex >= 0) {
+                IPlugin projectPlugin = pluginLoader.getLoadedPlugins().get(lastIndex);
+                try {
+                    projectPlugin.initialize(this);
+                    projectPlugin.start();
+                } catch (Exception ex) {
+                    GlobalExceptionHandler.handle("Chạy Project Plugin", ex);
+                }
             }
         });
     }

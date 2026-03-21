@@ -1,48 +1,61 @@
 <template>
   <div class="min-h-screen bg-slate-50 flex font-sans">
-    
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-10">
       <div class="p-6 border-b border-slate-800">
-        <h2 class="text-2xl font-black text-blue-500 tracking-tighter">TEAMWORK</h2>
-        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Master System</p>
+        <h2 class="text-2xl font-black text-blue-500 tracking-tighter">
+          TEAMWORK
+        </h2>
+        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+          Master System
+        </p>
       </div>
-      
+
       <nav class="flex-1 p-4 space-y-2">
-          <a href="#" 
-              @click.prevent="currentTab = 'dashboard'" 
-              class="block px-4 py-3 rounded-xl font-bold transition-all"
-              :class="currentTab === 'dashboard' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-            >Bảng điều khiển</a>
+        <router-link
+          to="/dashboard"
+          class="block px-4 py-3 bg-blue-600 rounded-xl font-bold shadow-lg shadow-blue-900/50 transition-all"
+        >
+          Bảng điều khiển
+        </router-link>
 
-          <a href="#" 
-            @click.prevent="currentTab = 'projects'" 
-            class="block px-4 py-3 rounded-xl font-bold transition-all"
-            :class="currentTab === 'projects' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-          >Quản lý Dự án</a>
+        <router-link
+          to="/projects"
+          class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all"
+        >
+          Quản lý Dự án
+        </router-link>
 
-          <a href="#" 
-            @click.prevent="currentTab = 'tasks'" 
-            class="block px-4 py-3 rounded-xl font-bold transition-all"
-            :class="currentTab === 'tasks' ? 'bg-blue-600 shadow-lg shadow-blue-900/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-          >Công việc của tôi</a>
+        <router-link
+          to="/tasks"
+          class="block px-4 py-3 hover:bg-slate-800 rounded-xl font-bold text-slate-400 hover:text-white transition-all"
+        >
+          Công việc của tôi
+        </router-link>
       </nav>
+
       <div class="p-4 border-t border-slate-800">
-        <button @click="handleLogout" class="w-full py-3 text-center text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition-all">
+        <button
+          @click="handleLogout"
+          class="w-full py-3 text-center text-red-400 font-bold hover:bg-red-500/10 rounded-xl transition-all"
+        >
           Đăng xuất
         </button>
       </div>
     </aside>
 
     <main class="flex-1 p-10">
-      <div v-if="currentTab == 'dashboard'">
       <header class="flex justify-between items-center mb-10">
         <div>
-          <h1 class="text-3xl font-extrabold text-slate-800">Tổng quan hệ thống</h1>
-          <p class="text-slate-500 font-medium mt-1">Chào mừng bạn quay trở lại làm việc!</p>
+          <h1 class="text-3xl font-extrabold text-slate-800">
+            Tổng quan hệ thống
+          </h1>
+          <p class="text-slate-500 font-medium mt-1">
+            Chào mừng bạn quay trở lại làm việc!
+          </p>
         </div>
         <div class="flex items-center space-x-4 bg-white px-5 py-2 rounded-full shadow-sm border border-slate-200">
           <span class="font-bold text-slate-700">Xin chào, {{ currentUser }}</span>
-          
+
           <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-black shadow-md">
             {{ firstLetter }}
           </div>
@@ -50,54 +63,82 @@
       </header>
 
       <div class="grid grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
-          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">Tổng số dự án</h3>
-          <p class="text-4xl font-black text-blue-600">12</p>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all relative overflow-hidden">
+          <div v-if="loadingProjects" class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center">
+            <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          
+          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">
+            Tổng số dự án
+          </h3>
+          <p class="text-4xl font-black text-blue-600">{{ totalProjects }}</p>
         </div>
+        
         <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
-          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">Công việc đang làm</h3>
+          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">
+            Công việc đang làm
+          </h3>
           <p class="text-4xl font-black text-orange-500">34</p>
         </div>
+        
         <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
-          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">Hoàn thành tháng này</h3>
-          <p class="text-4xl font-black text-emerald-500">89</p>
+          <h3 class="text-slate-500 font-bold mb-2 uppercase text-xs tracking-wider">
+            Hoàn thành tháng này
+          </h3>
+           <p class="text-4xl font-black text-emerald-500">89</p>
         </div>
-      </div>
-      </div><div v-if="currentTab == 'tasks'">
-        <TaskView />
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
-import TaskView from './TaskView.vue'; // Kéo màn hình TaskView vào đây
-// Tạo 1 biến để nhớ xem người dùng đang chọn menu nào. Mặc định là 'dashboard'
-const currentTab = ref('dashboard'); 
+const router = useRouter();
 
-const router = useRouter()
+const currentUser = ref("Khách");
+const firstLetter = ref("K");
 
-// Tạo biến để lưu tên người dùng và chữ cái đầu tiên
-const currentUser = ref('Khách')
-const firstLetter = ref('K')
+// --- MỚI THÊM: Biến quản lý trạng thái dữ liệu ---
+const totalProjects = ref(0);
+const loadingProjects = ref(true);
 
-// Hàm này sẽ tự động chạy ngay khi trang Dashboard vừa mở lên
-onMounted(() => {
-  const storedUser = localStorage.getItem('username')
-  if (storedUser) {
-    currentUser.value = storedUser
-    // Lấy chữ cái đầu tiên và viết hoa (Ví dụ: 'admin' -> 'A')
-    firstLetter.value = storedUser.charAt(0).toUpperCase()
+// --- MỚI THÊM: Hàm gọi API để đếm số lượng dự án ---
+const fetchProjectStats = async () => {
+  loadingProjects.value = true;
+  try {
+    const response = await fetch("http://localhost:8080/api/projects/list");
+    if (!response.ok) throw new Error("Không lấy được dữ liệu");
+    
+    const data = await response.json();
+    // Gán tổng số phần tử trong mảng trả về
+    totalProjects.value = data.length; 
+  } catch (error) {
+    console.error("Lỗi khi tải số liệu dự án:", error);
+    totalProjects.value = 0; // Trả về 0 nếu lỗi
+  } finally {
+    loadingProjects.value = false;
   }
-})
+};
+
+onMounted(() => {
+  // 1. Set User
+  const storedUser = localStorage.getItem("username");
+  if (storedUser) {
+    currentUser.value = storedUser;
+    firstLetter.value = storedUser.charAt(0).toUpperCase();
+  }
+  
+  // 2. Gọi API ngay khi trang vừa tải lên
+  fetchProjectStats();
+});
 
 const handleLogout = () => {
-  localStorage.removeItem('isLoggedIn');
-  localStorage.removeItem('username');
+  localStorage.removeItem("isLoggedIn");
+  localStorage.removeItem("username");
   alert("Đã đăng xuất khỏi hệ thống!");
-  router.push('/');
-}
+  router.push("/");
+};
 </script>

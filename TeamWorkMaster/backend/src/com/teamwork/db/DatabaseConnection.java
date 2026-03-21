@@ -23,7 +23,7 @@ public class DatabaseConnection {
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "tmk1206";
+    private final String PASSWORD = "20022005nha@";
 
     // 2. Constructor được set là 'private' để các class khác không thể dùng từ khóa
     // 'new'
@@ -33,7 +33,7 @@ public class DatabaseConnection {
             Class.forName("com.mysql.cj.jdbc.Driver");
             // Mở đường truyền tới Database
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("[DATABASE] DA KET NOI THANH CONG tới MySQL: " + DB_NAME);
+            System.out.println("[DATABASE] DA KET NOI THANH CONG TOI MySQL: " + DB_NAME);
         } catch (ClassNotFoundException e) {
             GlobalExceptionHandler.handle("DatabaseConnection",
                     new Exception("Không tìm thấy Driver MySQL! Hãy kiểm tra lại file .jar trong thư mục lib."));
