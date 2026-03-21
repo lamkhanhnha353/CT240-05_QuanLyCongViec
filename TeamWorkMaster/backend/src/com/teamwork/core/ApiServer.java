@@ -23,6 +23,11 @@ public class ApiServer {
         server.createContext("/api/projects/delete", this::handleDelete);
         server.createContext("/api/projects/add-member", this::handleAddMember);
 
+        // --- CÁC ENDPOINT TASK (CÔNG VIỆC) ---
+        server.createContext("/api/tasks/list", this::handleTaskList);
+        server.createContext("/api/tasks/create", this::handleTaskCreate);
+        server.createContext("/api/tasks/update-status", this::handleTaskUpdateStatus);
+
         // --- CÁC ENDPOINT AUTH & ADMIN ---
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
@@ -46,6 +51,82 @@ public class ApiServer {
         System.out.println(">>> TRẠNG THÁI: SẴN SÀNG KẾT NỐI VỚI VUE");
     }
 
+    // ==========================================
+    // CÁC HÀM XỬ LÝ TASK (KANBAN BOARD)
+    // ==========================================
+    private void handleTaskList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String query = ex.getRequestURI().getQuery();
+            int projectId = 0;
+            if (query != null && query.contains("projectId=")) {
+                projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
+            }
+            sendResponse(ex, 200, new TaskDAO().getTasksByProject(projectId));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskCreate(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            String title = extract(body, "title");
+            String desc = extract(body, "description");
+            if (desc.isEmpty())
+                desc = extract(body, "desc");
+            String priority = extract(body, "priority");
+            if (priority.isEmpty())
+                priority = "MEDIUM";
+            String deadline = extract(body, "deadline");
+
+            String assigneeStr = extract(body, "assigneeId");
+            int assigneeId = assigneeStr.isEmpty() ? 0 : Integer.parseInt(assigneeStr);
+
+            boolean ok = new TaskDAO().createTask(projectId, title, desc, priority, deadline, assigneeId);
+            if (ok)
+                sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại do lỗi CSDL\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskUpdateStatus(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int taskId = Integer.parseInt(extract(body, "taskId"));
+            String status = extract(body, "status");
+
+            boolean ok = new TaskDAO().updateTaskStatus(taskId, status);
+            if (ok)
+                sendResponse(ex, 200, "{\"message\":\"Cập nhật vị trí thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // ==========================================
+    // CÁC HÀM XỬ LÝ DỰ ÁN & PROJECT (Giữ nguyên)
+    // ==========================================
     private void handleList(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
@@ -70,12 +151,9 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             String name = extract(body, "name");
-
-            // ĐÃ FIX: Bắt cả 'desc' và 'description'
             String desc = extract(body, "desc");
             if (desc.isEmpty())
                 desc = extract(body, "description");
-
             String start = extract(body, "startDate");
             String end = extract(body, "endDate");
             String priority = extract(body, "priority");
@@ -298,7 +376,6 @@ public class ApiServer {
             if (priority.isEmpty())
                 priority = "MEDIUM";
 
-            // ĐÃ FIX: Bắt cả 'desc' và 'description' cho phần Cập nhật luôn
             String desc = extract(body, "desc");
             if (desc.isEmpty())
                 desc = extract(body, "description");
@@ -457,15 +534,11 @@ public class ApiServer {
         ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, User-ID");
     }
 
-    // 💥 ĐÃ FIX: HÀM EXTRACT ĐƯỢC NÂNG CẤP THÔNG MINH HƠN 💥
     private String extract(String json, String key) {
-        // Cố gắng tìm giá trị dạng chuỗi (nằm trong ngoặc kép "") - lấy luôn cả dấu
-        // cách, \n...
         Matcher mString = Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
         if (mString.find())
             return mString.group(1).trim();
 
-        // Cố gắng tìm giá trị dạng số hoặc boolean (không có ngoặc kép)
         Matcher mNum = Pattern.compile("\"" + key + "\"\\s*:\\s*([a-zA-Z0-9\\.]+)").matcher(json);
         if (mNum.find())
             return mNum.group(1).trim();

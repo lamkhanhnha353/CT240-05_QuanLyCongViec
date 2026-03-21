@@ -29,6 +29,13 @@ const router = createRouter({
       component: () => import('../views/ProjectsView.vue'),
       meta: { requiresAuth: true, role: 'MEMBER' }
     },
+
+    {
+      path: '/board/:projectId', 
+      name: 'KanbanBoard',
+      component: () => import('../views/KanbanBoardView.vue')
+     },
+
     // ==========================================
     // KHU VỰC CẤM - CHỈ DÀNH CHO ADMIN
     // ==========================================
