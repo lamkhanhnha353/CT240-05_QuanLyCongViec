@@ -4,10 +4,8 @@ import java.sql.*;
 
 public class TaskDAO {
 
-    // Lấy toàn bộ công việc của 1 dự án
     public String getTasksByProject(int projectId) {
         StringBuilder json = new StringBuilder("[");
-        // JOIN với bảng USERS để lấy ra tên người được giao việc (Assignee)
         String sql = "SELECT t.*, u.FullName as AssigneeName, u.Email as AssigneeEmail " +
                 "FROM TBL_TASKS t LEFT JOIN TBL_USERS u ON t.AssigneeID = u.ID " +
                 "WHERE t.ProjectID = ? ORDER BY t.CreatedAt DESC";
@@ -25,7 +23,7 @@ public class TaskDAO {
                         .append("\"description\":\"").append(escapeJson(rs.getString("Description"))).append("\",")
                         .append("\"priority\":\"").append(rs.getString("Priority")).append("\",")
                         .append("\"deadline\":\"").append(rs.getString("Deadline")).append("\",")
-                        .append("\"status\":\"").append(rs.getString("Status")).append("\",") // TODO, IN_PROGRESS, DONE
+                        .append("\"status\":\"").append(rs.getString("Status")).append("\",")
                         .append("\"assigneeId\":").append(rs.getInt("AssigneeID")).append(",")
                         .append("\"assigneeName\":\"").append(escapeJson(rs.getString("AssigneeName"))).append("\"")
                         .append("}");
@@ -37,7 +35,6 @@ public class TaskDAO {
         return json.append("]").toString();
     }
 
-    // Tạo công việc mới
     public boolean createTask(int projectId, String title, String description, String priority, String deadline,
             int assigneeId) {
         String sql = "INSERT INTO TBL_TASKS (ProjectID, Title, Description, Priority, Deadline, AssigneeID, Status) VALUES (?, ?, ?, ?, ?, ?, 'TODO')";
@@ -48,17 +45,15 @@ public class TaskDAO {
             pstmt.setString(3, description);
             pstmt.setString(4, priority);
 
-            if (deadline == null || deadline.trim().isEmpty() || deadline.equals("null")) {
+            if (deadline == null || deadline.trim().isEmpty() || deadline.equals("null"))
                 pstmt.setNull(5, Types.DATE);
-            } else {
+            else
                 pstmt.setDate(5, Date.valueOf(deadline));
-            }
 
-            if (assigneeId <= 0) {
-                pstmt.setNull(6, Types.INTEGER); // Không giao cho ai (Unassigned)
-            } else {
+            if (assigneeId <= 0)
+                pstmt.setNull(6, Types.INTEGER);
+            else
                 pstmt.setInt(6, assigneeId);
-            }
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -66,7 +61,6 @@ public class TaskDAO {
         }
     }
 
-    // Cập nhật trạng thái (API siêu quan trọng dùng khi Kéo - Thả)
     public boolean updateTaskStatus(int taskId, String status) {
         String sql = "UPDATE TBL_TASKS SET Status = ? WHERE ID = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -80,7 +74,47 @@ public class TaskDAO {
         }
     }
 
-    // Hàm chống lỗi font khi gửi JSON
+    // --- HÀM XÓA THẺ ---
+    public boolean deleteTask(int taskId) {
+        String sql = "DELETE FROM TBL_TASKS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // --- HÀM CẬP NHẬT THÔNG TIN THẺ (GIAO VIỆC) ---
+    public boolean updateTaskDetails(int taskId, String title, String description, String priority, String deadline,
+            int assigneeId) {
+        String sql = "UPDATE TBL_TASKS SET Title = ?, Description = ?, Priority = ?, Deadline = ?, AssigneeID = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, title);
+            pstmt.setString(2, description);
+            pstmt.setString(3, priority);
+
+            if (deadline == null || deadline.trim().isEmpty() || deadline.equals("null"))
+                pstmt.setNull(4, Types.DATE);
+            else
+                pstmt.setDate(4, Date.valueOf(deadline));
+
+            if (assigneeId <= 0)
+                pstmt.setNull(5, Types.INTEGER);
+            else
+                pstmt.setInt(5, assigneeId);
+
+            pstmt.setInt(6, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private String escapeJson(String data) {
         if (data == null)
             return "";

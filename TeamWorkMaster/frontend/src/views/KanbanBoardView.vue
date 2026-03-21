@@ -41,7 +41,7 @@
             :animation="200"
           >
             <template #item="{ element }">
-              <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group"
+              <div @click="openEditModal(element)" class="bg-white p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group"
                    :class="getPriorityBorder(element.priority)">
                 
                 <div class="flex justify-between items-start mb-2">
@@ -78,18 +78,15 @@
     <div v-if="showTaskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 relative animate-fade-in">
         <h2 class="text-2xl font-bold text-slate-800 mb-6">Thêm Công việc Mới</h2>
-        
         <div class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên công việc <span class="text-red-500">*</span></label>
             <input v-model="newTask.title" type="text" placeholder="Nhập tên việc cần làm..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all" />
           </div>
-
           <div>
             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mô tả chi tiết</label>
             <textarea v-model="newTask.description" rows="3" placeholder="Mô tả công việc này..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all"></textarea>
           </div>
-
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mức độ ưu tiên</label>
@@ -105,12 +102,62 @@
             </div>
           </div>
         </div>
-
         <div class="flex justify-end space-x-3 mt-8">
           <button @click="showTaskModal = false" class="px-5 py-2.5 bg-slate-100 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-all">Hủy</button>
-          <button @click="submitTask" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
-            Tạo thẻ
+          <button @click="submitTask" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">Tạo thẻ</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-8 relative animate-fade-in">
+        <div class="flex justify-between items-start mb-6">
+          <h2 class="text-2xl font-bold text-slate-800">Chi tiết Công việc</h2>
+          <button @click="deleteSelectedTask" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Xóa thẻ này">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
           </button>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên công việc</label>
+            <input v-model="editTaskData.title" type="text" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all" />
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mô tả chi tiết</label>
+            <textarea v-model="editTaskData.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all"></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Giao cho (Assignee)</label>
+            <select v-model="editTaskData.assigneeId" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer bg-slate-50 text-sm font-medium">
+              <option value="0">--- Chưa phân công ---</option>
+              <option v-for="user in projectMembers" :key="user.id" :value="user.id">
+                {{ user.fullName }} ({{ user.email }})
+              </option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Ưu tiên</label>
+              <select v-model="editTaskData.priority" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer bg-slate-50 text-sm font-medium">
+                <option value="LOW">Thấp</option>
+                <option value="MEDIUM">Vừa</option>
+                <option value="HIGH">Cao</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Hạn chót</label>
+              <input v-model="editTaskData.deadline" type="date" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 transition-all" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-3 mt-8 border-t border-slate-100 pt-5">
+          <button @click="showEditModal = false" class="px-5 py-2.5 bg-slate-100 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-all">Đóng</button>
+          <button @click="submitEditTask" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">Lưu thay đổi</button>
         </div>
       </div>
     </div>
@@ -213,6 +260,11 @@ const boardTasks = ref({ 'TODO': [], 'IN_PROGRESS': [], 'DONE': [] });
 const showTaskModal = ref(false);
 const newTask = ref({ title: '', description: '', priority: 'MEDIUM', deadline: '', targetColumn: 'TODO' });
 
+// --- BIẾN MỚI THÊM CHO SỬA/XÓA/GIAO VIỆC ---
+const showEditModal = ref(false);
+const editTaskData = ref({ id: null, title: '', description: '', priority: 'MEDIUM', deadline: '', assigneeId: 0 });
+const projectMembers = ref([]);
+
 onMounted(() => {
   if (!projectId) {
     addToast("Lỗi: Không tìm thấy ID dự án!", "error");
@@ -220,6 +272,7 @@ onMounted(() => {
     return;
   }
   fetchTasks();
+  fetchProjectMembers(); // Gọi API lấy người trong dự án
 });
 
 const goBack = () => {
@@ -242,6 +295,16 @@ const fetchTasks = async () => {
     });
   } catch (error) { 
     addToast("Lỗi khi tải bảng Kanban!", "error"); 
+  }
+};
+
+// Hàm lấy thành viên dự án
+const fetchProjectMembers = async () => {
+  try {
+    const res = await fetch(`http://localhost:8080/api/projects/members-list?projectId=${projectId}`);
+    if (res.ok) projectMembers.value = await res.json();
+  } catch (error) {
+    console.error("Lỗi tải danh sách thành viên", error);
   }
 };
 
@@ -295,6 +358,51 @@ const submitTask = async () => {
   } catch (error) { 
     addToast("Lỗi kết nối máy chủ!", "error"); 
   }
+};
+
+// --- HÀM CHO MODAL SỬA/XÓA ---
+const openEditModal = (task) => {
+  editTaskData.value = { 
+    id: task.id,
+    title: task.title,
+    description: task.description || '',
+    priority: task.priority,
+    deadline: task.deadline && task.deadline !== 'null' ? task.deadline : '',
+    assigneeId: task.assigneeId || 0
+  };
+  showEditModal.value = true;
+};
+
+const submitEditTask = async () => {
+  if (!editTaskData.value.title.trim()) return addToast("Tên công việc không được trống!", "warning");
+  try {
+    const res = await fetch("http://localhost:8080/api/tasks/update-details", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: editTaskData.value.id, ...editTaskData.value })
+    });
+    if (res.ok) {
+      addToast("Cập nhật thành công!", "success");
+      showEditModal.value = false;
+      fetchTasks();
+    } else { addToast("Cập nhật thất bại", "error"); }
+  } catch (error) { addToast("Lỗi kết nối máy chủ!", "error"); }
+};
+
+const deleteSelectedTask = async () => {
+  if (!confirm("Bạn có chắc chắn muốn xóa vĩnh viễn thẻ này?")) return;
+  try {
+    const res = await fetch("http://localhost:8080/api/tasks/delete", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: editTaskData.value.id })
+    });
+    if (res.ok) {
+      addToast("Đã xóa thẻ!", "success");
+      showEditModal.value = false;
+      fetchTasks();
+    } else { addToast("Xóa thất bại", "error"); }
+  } catch (error) { addToast("Lỗi kết nối máy chủ!", "error"); }
 };
 
 // Logic Modal Mời

@@ -1,14 +1,13 @@
 package com.teamwork.db;
 
 import java.sql.*;
-import com.teamwork.plugins.EmailService; // Import thư viện gửi mail của đồng đội
+import com.teamwork.plugins.EmailService;
 
 public class ProjectMemberDAO {
 
     public boolean addOrUpdateMember(int projectId, int userId, String role) {
         String sql = "INSERT INTO TBL_PROJECT_MEMBERS (ProjectID, UserID, Role, InviteStatus) VALUES (?, ?, ?, 'JOINED') "
-                +
-                "ON DUPLICATE KEY UPDATE Role = ?, InviteStatus = 'JOINED'";
+                + "ON DUPLICATE KEY UPDATE Role = ?, InviteStatus = 'JOINED'";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, projectId);
@@ -21,97 +20,90 @@ public class ProjectMemberDAO {
         }
     }
 
-    // HÀM MỚI: Mời thành viên đa năng
     public String inviteMember(int projectId, String projectName, String identifier, String role, String inviterName) {
         int targetUserId = -1;
         String targetEmail = "";
 
-        // 0. Chuẩn hoá giá trị
         String normalized = identifier == null ? "" : identifier.trim();
-        if (normalized.startsWith("@")) {
+        if (normalized.startsWith("@"))
             normalized = normalized.substring(1).trim();
-        }
-        if (normalized.isEmpty()) {
-            return "Vui lòng cung cấp Username hoặc Email!";
-        }
+        if (normalized.isEmpty())
+            return "Vui lòng cung cấp Username hoặc Email để mời!";
 
-        // 1. Tìm người dùng bằng Username HOẶC Email
-        String sqlFind = "SELECT ID, Email FROM TBL_USERS WHERE Email = ? OR Username = ?";
+        String sqlFindUser = "SELECT ID, Email FROM TBL_USERS WHERE Username = ? OR Email = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sqlFind)) {
-            pstmt.setString(1, normalized);
-            pstmt.setString(2, normalized);
-            ResultSet rs = pstmt.executeQuery();
+                PreparedStatement pstmtFind = conn.prepareStatement(sqlFindUser)) {
+            pstmtFind.setString(1, normalized);
+            pstmtFind.setString(2, normalized);
+            ResultSet rs = pstmtFind.executeQuery();
             if (rs.next()) {
                 targetUserId = rs.getInt("ID");
                 targetEmail = rs.getString("Email");
+            } else {
+                return "Không tìm thấy người dùng nào khớp với thông tin này!";
             }
         } catch (SQLException e) {
-            return "Lỗi hệ thống khi tìm User: " + e.getMessage();
+            return "Lỗi CSDL khi tìm người dùng.";
         }
 
-        if (targetUserId == -1)
-            return "Không tìm thấy người dùng này!";
-
-        // 2. Insert vào dự án với trạng thái chờ xác nhận (PENDING)
-        String sqlInsert = "INSERT INTO TBL_PROJECT_MEMBERS (ProjectID, UserID, Role, InviteStatus) VALUES (?, ?, ?, 'PENDING')";
+        String sqlCheck = "SELECT InviteStatus FROM TBL_PROJECT_MEMBERS WHERE ProjectID = ? AND UserID = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sqlInsert)) {
-            pstmt.setInt(1, projectId);
-            pstmt.setInt(2, targetUserId);
-            pstmt.setString(3, role);
-            pstmt.executeUpdate();
+                PreparedStatement pstmtCheck = conn.prepareStatement(sqlCheck)) {
+            pstmtCheck.setInt(1, projectId);
+            pstmtCheck.setInt(2, targetUserId);
+            ResultSet rsCheck = pstmtCheck.executeQuery();
+            if (rsCheck.next()) {
+                String status = rsCheck.getString("InviteStatus");
+                if ("JOINED".equals(status))
+                    return "Người này đã là thành viên của dự án!";
+                if ("PENDING".equals(status))
+                    return "Người này đã được mời và đang chờ xác nhận!";
+            }
         } catch (SQLException e) {
-            // Nếu bảng chưa có cột InviteStatus, thử fallback sang bản cũ (không lưu
-            // InviteStatus)
-            if ("42S22".equals(e.getSQLState()) || e.getMessage().contains("Unknown column 'InviteStatus'")) {
-                String sqlFallback = "INSERT INTO TBL_PROJECT_MEMBERS (ProjectID, UserID, Role) VALUES (?, ?, ?)";
-                try (Connection conn = DatabaseConnection.getInstance().getConnection();
-                        PreparedStatement pstmt = conn.prepareStatement(sqlFallback)) {
-                    pstmt.setInt(1, projectId);
-                    pstmt.setInt(2, targetUserId);
-                    pstmt.setString(3, role);
-                    pstmt.executeUpdate();
-                } catch (SQLException ex) {
-                    if (ex.getErrorCode() == 1062 || "23000".equals(ex.getSQLState())) {
-                        return "Người này đã ở trong dự án hoặc đã được mời rồi!";
-                    }
-                    return "Lỗi khi mời thành viên: " + ex.getMessage();
+            return "Lỗi CSDL khi kiểm tra thành viên.";
+        }
+
+        String sqlInvite = "INSERT INTO TBL_PROJECT_MEMBERS (ProjectID, UserID, Role, InviteStatus) VALUES (?, ?, ?, 'PENDING') "
+                + "ON DUPLICATE KEY UPDATE Role = ?, InviteStatus = 'PENDING'";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmtInvite = conn.prepareStatement(sqlInvite)) {
+            pstmtInvite.setInt(1, projectId);
+            pstmtInvite.setInt(2, targetUserId);
+            pstmtInvite.setString(3, role);
+            pstmtInvite.setString(4, role);
+            int rows = pstmtInvite.executeUpdate();
+
+            if (rows > 0) {
+                new NotificationDAO().createInviteNotification(targetUserId, projectId, projectName, inviterName);
+                if (!targetEmail.isEmpty()) {
+                    String subject = "Lời mời tham gia dự án: " + projectName;
+                    String message = String.format("Chào bạn,\n\n%s đã mời bạn tham gia dự án '%s' với vai trò %s.\n"
+                            + "Vui lòng đăng nhập vào hệ thống TeamWork Master để xem thông báo và xác nhận.\n\nTrân trọng,\nĐội ngũ TeamWork Master.",
+                            inviterName, projectName, role);
+                    EmailService.sendEmail(targetEmail, subject, message);
                 }
-            } else if (e.getErrorCode() == 1062 || "23000".equals(e.getSQLState())) {
-                return "Người này đã ở trong dự án hoặc đã được mời rồi!";
-            } else {
-                return "Lỗi khi mời thành viên: " + e.getMessage();
+                return "SUCCESS";
             }
+        } catch (SQLException e) {
+            return "Lỗi CSDL khi tạo lời mời.";
         }
-
-        // 3. Tạo thông báo (Quả chuông góc phải)
-        System.out.println("DEBUG: Tạo thông báo cho userId=" + targetUserId + ", projectId=" + projectId);
-        new NotificationDAO().createInviteNotification(targetUserId, projectId, projectName, inviterName);
-        System.out.println("DEBUG: Thông báo đã tạo xong");
-
-        // 4. Bắn Email thực tế
-        System.out.println("DEBUG: Gửi email tới " + targetEmail);
-        try {
-            if (targetEmail != null && !targetEmail.isEmpty()) {
-                String msg = "Xin chào,\n\nBạn vừa được " + inviterName + " mời tham gia dự án '" + projectName
-                        + "' với vai trò " + role + ".\n\nHãy đăng nhập vào hệ thống để đồng ý tham gia nhé!";
-                EmailService.sendEmail(targetEmail, "Lời mời tham gia dự án mới", msg);
-            } else {
-                System.out.println("DEBUG: Email rỗng, bỏ qua gửi");
-            }
-        } catch (Exception e) {
-            System.err.println("Gửi email thất bại: " + e.getMessage());
-        }
-
-        return "SUCCESS";
+        return "Lỗi không xác định khi tạo lời mời.";
     }
 
-    // Hàm dùng khi người dùng bấm Đồng ý hoặc Từ chối quả chuông
     public boolean respondToInvite(int userId, int projectId, boolean isAccept) {
-        String sql = isAccept
-                ? "UPDATE TBL_PROJECT_MEMBERS SET InviteStatus = 'JOINED' WHERE UserID = ? AND ProjectID = ?"
-                : "DELETE FROM TBL_PROJECT_MEMBERS WHERE UserID = ? AND ProjectID = ?";
+        if (!isAccept) {
+            String sql = "DELETE FROM TBL_PROJECT_MEMBERS WHERE UserID = ? AND ProjectID = ? AND InviteStatus = 'PENDING'";
+            try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                    PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, userId);
+                pstmt.setInt(2, projectId);
+                return pstmt.executeUpdate() > 0;
+            } catch (SQLException e) {
+                return false;
+            }
+        }
+
+        String sql = "UPDATE TBL_PROJECT_MEMBERS SET InviteStatus = 'JOINED' WHERE UserID = ? AND ProjectID = ? AND InviteStatus = 'PENDING'";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, userId);
@@ -120,7 +112,6 @@ public class ProjectMemberDAO {
         } catch (SQLException e) {
             if (isAccept
                     && ("42S22".equals(e.getSQLState()) || e.getMessage().contains("Unknown column 'InviteStatus'"))) {
-                // Schema cũ không có cột InviteStatus, vẫn xem như đã tham gia.
                 String sqlFallback = "UPDATE TBL_PROJECT_MEMBERS SET Role = Role WHERE UserID = ? AND ProjectID = ?";
                 try (Connection conn = DatabaseConnection.getInstance().getConnection();
                         PreparedStatement pstmt = conn.prepareStatement(sqlFallback)) {
@@ -146,5 +137,33 @@ public class ProjectMemberDAO {
         } catch (SQLException e) {
             return null;
         }
+    }
+
+    // --- HÀM LẤY DANH SÁCH THÀNH VIÊN ĐỂ GIAO VIỆC ---
+    public String getProjectMembersJson(int projectId) {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT u.ID, u.FullName, u.Email, pm.Role FROM TBL_PROJECT_MEMBERS pm " +
+                "INNER JOIN TBL_USERS u ON pm.UserID = u.ID " +
+                "WHERE pm.ProjectID = ? AND pm.InviteStatus = 'JOINED'";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, projectId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+                json.append("{")
+                        .append("\"id\":").append(rs.getInt("ID")).append(",")
+                        .append("\"fullName\":\"").append(rs.getString("FullName")).append("\",")
+                        .append("\"email\":\"").append(rs.getString("Email")).append("\",")
+                        .append("\"role\":\"").append(rs.getString("Role")).append("\"")
+                        .append("}");
+                first = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
     }
 }

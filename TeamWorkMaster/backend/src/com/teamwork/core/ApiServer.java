@@ -11,33 +11,37 @@ import com.teamwork.service.PermissionService;
 public class ApiServer {
     private HttpServer server;
     private UserDAO userDAO;
+    private TaskDAO taskDAO;
 
     public ApiServer(int port) throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         userDAO = new UserDAO();
+        taskDAO = new TaskDAO();
 
-        // --- CÁC ENDPOINT DỰ ÁN ---
         server.createContext("/api/projects/list", this::handleList);
         server.createContext("/api/projects/create", this::handleCreate);
         server.createContext("/api/projects/update", this::handleUpdate);
         server.createContext("/api/projects/delete", this::handleDelete);
         server.createContext("/api/projects/add-member", this::handleAddMember);
 
-        // --- CÁC ENDPOINT TASK (CÔNG VIỆC) ---
+        // --- 3 ENDPOINT MỚI THÊM VÀO ĐÂY ---
+        server.createContext("/api/projects/members-list", this::handleProjectMembersList);
+        server.createContext("/api/tasks/delete", this::handleTaskDelete);
+        server.createContext("/api/tasks/update-details", this::handleTaskUpdateDetails);
+
         server.createContext("/api/tasks/list", this::handleTaskList);
         server.createContext("/api/tasks/create", this::handleTaskCreate);
         server.createContext("/api/tasks/update-status", this::handleTaskUpdateStatus);
 
-        // --- CÁC ENDPOINT AUTH & ADMIN ---
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
+
         server.createContext("/api/admin/users/create", new AdminCreateUserHandler());
         server.createContext("/api/admin/users", new AdminGetUsersHandler());
         server.createContext("/api/admin/users/update", new AdminUpdateUserHandler());
         server.createContext("/api/admin/users/delete", new AdminDeleteUserHandler());
         server.createContext("/api/admin/users/toggle-lock", new AdminToggleLockUserHandler());
 
-        // --- CÁC ENDPOINT THÔNG BÁO & TÌM KIẾM ---
         server.createContext("/api/users/search", this::handleSearchUsers);
         server.createContext("/api/notifications/list", this::handleGetNotifications);
         server.createContext("/api/notifications/respond", this::handleRespondInvite);
@@ -51,10 +55,8 @@ public class ApiServer {
         System.out.println(">>> TRẠNG THÁI: SẴN SÀNG KẾT NỐI VỚI VUE");
     }
 
-    // ==========================================
-    // CÁC HÀM XỬ LÝ TASK (KANBAN BOARD)
-    // ==========================================
-    private void handleTaskList(HttpExchange ex) throws IOException {
+    // --- HÀM XỬ LÝ 3 ENDPOINT MỚI ---
+    private void handleProjectMembersList(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
@@ -66,7 +68,71 @@ public class ApiServer {
             if (query != null && query.contains("projectId=")) {
                 projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
             }
-            sendResponse(ex, 200, new TaskDAO().getTasksByProject(projectId));
+            sendResponse(ex, 200, new ProjectMemberDAO().getProjectMembersJson(projectId));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskDelete(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int taskId = Integer.parseInt(extract(body, "taskId"));
+            boolean ok = taskDAO.deleteTask(taskId);
+            if (ok)
+                sendResponse(ex, 200, "{\"message\":\"Đã xóa thẻ thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi xóa\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskUpdateDetails(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int taskId = Integer.parseInt(extract(body, "taskId"));
+            String title = extract(body, "title");
+            String desc = extract(body, "description");
+            if (desc.isEmpty())
+                desc = extract(body, "desc");
+            String priority = extract(body, "priority");
+            String deadline = extract(body, "deadline");
+            String assigneeStr = extract(body, "assigneeId");
+            int assigneeId = assigneeStr.isEmpty() ? 0 : Integer.parseInt(assigneeStr);
+
+            boolean ok = taskDAO.updateTaskDetails(taskId, title, desc, priority, deadline, assigneeId);
+            if (ok)
+                sendResponse(ex, 200, "{\"message\":\"Cập nhật thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String query = ex.getRequestURI().getQuery();
+            int projectId = 0;
+            if (query != null && query.contains("projectId="))
+                projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
+            sendResponse(ex, 200, taskDAO.getTasksByProject(projectId));
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -93,7 +159,7 @@ public class ApiServer {
             String assigneeStr = extract(body, "assigneeId");
             int assigneeId = assigneeStr.isEmpty() ? 0 : Integer.parseInt(assigneeStr);
 
-            boolean ok = new TaskDAO().createTask(projectId, title, desc, priority, deadline, assigneeId);
+            boolean ok = taskDAO.createTask(projectId, title, desc, priority, deadline, assigneeId);
             if (ok)
                 sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
             else
@@ -114,7 +180,7 @@ public class ApiServer {
             int taskId = Integer.parseInt(extract(body, "taskId"));
             String status = extract(body, "status");
 
-            boolean ok = new TaskDAO().updateTaskStatus(taskId, status);
+            boolean ok = taskDAO.updateTaskStatus(taskId, status);
             if (ok)
                 sendResponse(ex, 200, "{\"message\":\"Cập nhật vị trí thành công\"}");
             else
@@ -124,9 +190,6 @@ public class ApiServer {
         }
     }
 
-    // ==========================================
-    // CÁC HÀM XỬ LÝ DỰ ÁN & PROJECT (Giữ nguyên)
-    // ==========================================
     private void handleList(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
