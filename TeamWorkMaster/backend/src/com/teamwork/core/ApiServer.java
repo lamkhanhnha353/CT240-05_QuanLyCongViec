@@ -326,8 +326,10 @@ public class ApiServer {
                         sendResponse(exchange, 403, "{\"success\": false, \"message\": \"Tài khoản bị khóa!\"}");
                     } else if (loginResult != null) {
                         String[] parts = loginResult.split("-");
+                        String fullName = userDAO.getFullNameById(Integer.parseInt(parts[0]));
                         sendResponse(exchange, 200,
-                                "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \"" + parts[1] + "\"}");
+                                "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \"" + parts[1]
+                                        + "\", \"fullName\": \"" + escapeJson(fullName) + "\"}");
                     } else {
                         sendResponse(exchange, 401, "{\"success\": false, \"message\": \"Sai tài khoản/mật khẩu\"}");
                     }

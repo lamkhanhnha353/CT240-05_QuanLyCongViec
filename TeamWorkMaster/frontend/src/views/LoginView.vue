@@ -96,6 +96,7 @@ const handleLogin = async () => {
       localStorage.setItem('username', username.value);
       localStorage.setItem('role', data.role); // Data.role từ Java gửi sang
       localStorage.setItem('userId', data.userId);
+      localStorage.setItem('fullName', data.fullName);
       // Force sync localStorage
       await new Promise(resolve => setTimeout(resolve, 100));
       

@@ -8,7 +8,6 @@ import java.sql.SQLException;
 public class UserDAO {
 
     public String login(String username, String password) {
-        // ĐÃ NÂNG CẤP: Lấy thêm ID để Frontend lưu lại
         String sql = "SELECT ID, Role, IsActive, FullName FROM TBL_USERS WHERE Username = ? AND PasswordHash = ?";
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -20,8 +19,8 @@ public class UserDAO {
             if (rs.next()) {
                 if (!rs.getBoolean("IsActive"))
                     return "BANNED";
-                // Trả về chuỗi chứa cả ID và Role (Ví dụ: "1-ADMIN" hoặc "2-MEMBER")
-                return rs.getInt("ID") + "-" + rs.getString("Role");
+                // ĐÃ TỐI ƯU: Trả về luôn ID, Role và FullName (Ví dụ: "1-ADMIN-Nguyễn Văn A")
+                return rs.getInt("ID") + "-" + rs.getString("Role") + "-" + rs.getString("FullName");
             }
             pstmt.close();
         } catch (SQLException e) {
@@ -224,5 +223,22 @@ public class UserDAO {
             e.printStackTrace();
         }
         return json.append("]").toString();
+    }
+
+    public String getFullNameById(int id) {
+        String sql = "SELECT FullName FROM TBL_USERS WHERE ID = ?";
+        try {
+            Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("FullName");
+            }
+            pstmt.close();
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] Lỗi lấy FullName: " + e.getMessage());
+        }
+        return "";
     }
 }

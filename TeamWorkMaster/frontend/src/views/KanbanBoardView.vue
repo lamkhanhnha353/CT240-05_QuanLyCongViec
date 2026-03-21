@@ -110,9 +110,9 @@
     </div>
 
     <div v-if="showEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-row h-[80vh]">
+      <div class="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in flex flex-row h-[85vh]">
         
-        <div class="w-1/2 p-8 border-r border-slate-100 overflow-y-auto custom-scrollbar bg-white">
+        <div class="w-1/2 p-8 border-r border-slate-200 overflow-y-auto custom-scrollbar bg-white flex flex-col">
             <div class="flex justify-between items-start mb-6">
                 <h2 class="text-2xl font-bold text-slate-800">Chi tiết Công việc</h2>
                 <button @click="deleteSelectedTask" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Xóa thẻ này">
@@ -120,7 +120,7 @@
                 </button>
             </div>
             
-            <div class="space-y-4">
+            <div class="space-y-5 flex-1">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tên công việc</label>
                     <input v-model="editTaskData.title" type="text" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all" />
@@ -128,7 +128,7 @@
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mô tả chi tiết</label>
-                    <textarea v-model="editTaskData.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all"></textarea>
+                    <textarea v-model="editTaskData.description" rows="4" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium bg-slate-50 focus:bg-white transition-all custom-scrollbar"></textarea>
                 </div>
                 
                 <div>
@@ -157,41 +157,57 @@
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-3 mt-8 border-t border-slate-100 pt-5">
+            <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-slate-100 shrink-0">
                 <button @click="showEditModal = false" class="px-5 py-2.5 bg-slate-100 font-bold text-slate-600 rounded-xl hover:bg-slate-200 transition-all">Đóng</button>
                 <button @click="submitEditTask" class="px-5 py-2.5 bg-blue-600 font-bold text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">Lưu thay đổi</button>
             </div>
         </div>
 
-        <div class="w-1/2 bg-slate-50 flex flex-col">
-            <div class="p-4 border-b border-slate-200 bg-white">
-                <h3 class="text-md font-bold text-slate-800 flex items-center">
-                    <span class="mr-2">💬</span> Thảo luận
+        <div class="w-1/2 bg-slate-50 flex flex-col relative">
+            <div class="p-5 border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10 shrink-0 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center">
+                    <span class="mr-2 text-blue-500">💬</span> Thảo luận & Cập nhật
                 </h3>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar" id="chatContainer">
-                <div v-if="comments.length === 0" class="text-center text-slate-400 italic mt-10">
-                    Chưa có bình luận nào. Hãy là người đầu tiên!
+            <div class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" id="chatContainer">
+                <div v-if="comments.length === 0" class="flex flex-col items-center justify-center h-full opacity-50">
+                    <svg class="w-16 h-16 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <p class="text-sm font-bold text-slate-500">Chưa có bình luận nào</p>
+                    <p class="text-xs text-slate-400 mt-1">Hãy là người đầu tiên khơi mào câu chuyện!</p>
                 </div>
                 
                 <div v-for="c in comments" :key="c.id" class="flex flex-col" :class="c.user === currentUserName ? 'items-end' : 'items-start'">
-                    <span class="text-[10px] text-slate-400 font-bold mb-1">{{ c.user }}</span>
-                    <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm"
-                         :class="c.user === currentUserName ? 'bg-blue-600 text-white rounded-tr-none shadow-md' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'">
+                    <span class="text-[11px] text-slate-500 font-bold mb-1.5 px-1">{{ c.user }}</span>
+                    
+                    <div class="max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm relative group"
+                         :class="c.user === currentUserName ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'">
                         {{ c.content }}
+                        <div class="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 font-medium w-max whitespace-nowrap"
+                             :class="c.user === currentUserName ? '-left-20' : '-right-20'">
+                            {{ formatChatTime(c.time) }}
+                        </div>
                     </div>
-                    <span class="text-[9px] text-slate-400 mt-1">{{ formatChatTime(c.time) }}</span>
                 </div>
             </div>
 
-            <div class="p-4 bg-white border-t border-slate-200">
-                <div class="flex space-x-2">
-                    <input v-model="newCommentText" @keyup.enter="sendComment" type="text" placeholder="Nhập bình luận..." class="flex-1 px-4 py-2.5 rounded-full border border-slate-200 focus:ring-2 focus:ring-blue-500/50 outline-none text-sm bg-slate-50" />
-                    <button @click="sendComment" :disabled="!newCommentText.trim()" class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            <div class="p-4 bg-white border-t border-slate-200 shrink-0">
+                <div class="flex items-end space-x-2">
+                    <textarea 
+                      v-model="newCommentText" 
+                      @keydown.enter.prevent="sendComment" 
+                      rows="1"
+                      placeholder="Nhập nội dung bình luận..." 
+                      class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 outline-none text-sm bg-slate-50 focus:bg-white resize-none custom-scrollbar transition-all" 
+                      style="min-height: 44px; max-height: 120px;"
+                    ></textarea>
+                    
+                    <button @click="sendComment" :disabled="!newCommentText.trim() || isSendingComment" class="w-11 h-11 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95">
+                        <svg v-if="!isSendingComment" class="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        <div v-else class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     </button>
                 </div>
+                <p class="text-[10px] text-slate-400 mt-2 ml-2 text-center font-medium">Nhấn <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-500 font-sans">Enter</kbd> để gửi, <kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-500 font-sans">Shift + Enter</kbd> để xuống dòng</p>
             </div>
         </div>
       </div>
@@ -283,7 +299,10 @@ const { addToast } = useToast();
 const projectId = route.params.projectId; 
 const projectName = ref(route.query.projectName || "Dự án Không tên");
 const userRole = ref(route.query.role || "MEMBER");
-const currentUserName = ref(localStorage.getItem("username") || "Khách"); // Để so sánh tin nhắn của mình
+
+// Biến lưu tên người dùng để hiển thị Bong bóng chat khác màu
+const currentUserName = ref(localStorage.getItem("fullName") || localStorage.getItem("username") || ""); 
+// Nếu localStorage lưu tên là fullname thì bạn đổi lại cho khớp nhé
 
 const kanbanColumns = ref([
   { id: 'TODO', title: 'Cần làm', colorClass: 'bg-slate-400' },
@@ -299,9 +318,10 @@ const showEditModal = ref(false);
 const editTaskData = ref({ id: null, title: '', description: '', priority: 'MEDIUM', deadline: '', assigneeId: 0 });
 const projectMembers = ref([]);
 
-// --- BIẾN CHO PHẦN BÌNH LUẬN ---
+// --- BIẾN CHO TÍNH NĂNG CHAT / BÌNH LUẬN ---
 const comments = ref([]);
 const newCommentText = ref("");
+const isSendingComment = ref(false);
 
 onMounted(() => {
   if (!projectId) {
@@ -309,8 +329,13 @@ onMounted(() => {
     router.push('/projects');
     return;
   }
+  // Lấy danh sách task và danh sách thành viên dự án
   fetchTasks();
   fetchProjectMembers(); 
+  
+  // Tùy chọn: Gọi thử currentUserName từ FullName nếu hệ thống bạn dùng FullName thay vì Username
+  const fn = localStorage.getItem("fullName");
+  if(fn) currentUserName.value = fn;
 });
 
 const goBack = () => {
@@ -397,7 +422,7 @@ const submitTask = async () => {
   }
 };
 
-// --- HÀM CHO MODAL SỬA/XÓA VÀ LẤY BÌNH LUẬN ---
+// --- HÀM KHI CLICK VÀO THẺ: MỞ MODAL VÀ TẢI BÌNH LUẬN ---
 const openEditModal = (task) => {
   editTaskData.value = { 
     id: task.id,
@@ -409,7 +434,8 @@ const openEditModal = (task) => {
   };
   showEditModal.value = true;
   
-  // Tải bình luận của công việc này
+  // Xóa bình luận cũ trên màn hình và tải bình luận của thẻ mới bấm vào
+  comments.value = [];
   fetchComments(task.id);
 };
 
@@ -458,13 +484,19 @@ const fetchComments = async (taskId) => {
   }
 };
 
-const sendComment = async () => {
+const sendComment = async (event) => {
+  // Nếu bấm Shift + Enter thì cho phép xuống dòng (Không gửi)
+  if (event && event.shiftKey) return; 
+
   if (!newCommentText.value.trim()) return;
   const content = newCommentText.value.trim();
-  newCommentText.value = ""; // Clear ô nhập ngay cho mượt
+  newCommentText.value = ""; // Xóa ô nhập ngay lập tức cho mượt
+  isSendingComment.value = true;
 
   try {
-    const userId = localStorage.getItem("userId"); // Cần có ID người gửi
+    // API cần lấy UserID từ header để định danh ai là người chat
+    const userId = localStorage.getItem("userId") || 1; 
+    
     const res = await fetch("http://localhost:8080/api/comments", {
       method: "POST",
       headers: { 
@@ -475,26 +507,30 @@ const sendComment = async () => {
     });
     
     if (res.ok) {
-      fetchComments(editTaskData.value.id); // Tải lại chat
+      // Gửi thành công thì tải lại khung chat
+      fetchComments(editTaskData.value.id); 
     } else {
       addToast("Không thể gửi bình luận", "error");
     }
   } catch (error) {
     addToast("Lỗi mạng khi gửi bình luận", "error");
+  } finally {
+    isSendingComment.value = false;
   }
 };
 
+// Hàm tự động cuộn khung chat xuống dưới cùng khi có tin nhắn mới
 const scrollToBottom = () => {
   nextTick(() => {
     const container = document.getElementById("chatContainer");
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      // Dùng smooth cuộn cho xịn
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
   });
 };
 
-
-// Logic Modal Mời
+// ... LOGIC MỜI THÀNH VIÊN GIỮ NGUYÊN ...
 const showMemberModal = ref(false);
 const memberSearchQuery = ref("");
 const searchResults = ref([]);
@@ -589,6 +625,7 @@ const formatDate = (dateStr) => {
   if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
   return dateStr;
 };
+// Hàm format ngày giờ cực chuẩn cho khung Chat
 const formatChatTime = (timeStr) => {
   if (!timeStr) return '';
   const date = new Date(timeStr);
@@ -605,9 +642,10 @@ const isDeadlineNear = (dateStr) => {
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-/* Nâng cấp Scrollbar cho hiện đại */
+
+/* Tùy chỉnh thanh cuộn cho khu vực Chat cực kỳ tinh tế */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>

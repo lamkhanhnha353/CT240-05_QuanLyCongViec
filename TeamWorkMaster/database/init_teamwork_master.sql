@@ -103,6 +103,18 @@ CREATE TABLE TBL_NOTIFICATIONS (
     FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+	
+CREATE TABLE TBL_COMMENTS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    Content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 -- =========================================================================
 -- DỮ LIỆU MẪU BAN ĐẦU
 -- =========================================================================
