@@ -16,12 +16,14 @@ public class ApiServer {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         userDAO = new UserDAO();
 
+        // --- CÁC ENDPOINT DỰ ÁN ---
         server.createContext("/api/projects/list", this::handleList);
         server.createContext("/api/projects/create", this::handleCreate);
         server.createContext("/api/projects/update", this::handleUpdate);
         server.createContext("/api/projects/delete", this::handleDelete);
         server.createContext("/api/projects/add-member", this::handleAddMember);
 
+        // --- CÁC ENDPOINT AUTH & ADMIN ---
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
         server.createContext("/api/admin/users/create", new AdminCreateUserHandler());
@@ -30,6 +32,7 @@ public class ApiServer {
         server.createContext("/api/admin/users/delete", new AdminDeleteUserHandler());
         server.createContext("/api/admin/users/toggle-lock", new AdminToggleLockUserHandler());
 
+        // --- CÁC ENDPOINT THÔNG BÁO & TÌM KIẾM ---
         server.createContext("/api/users/search", this::handleSearchUsers);
         server.createContext("/api/notifications/list", this::handleGetNotifications);
         server.createContext("/api/notifications/respond", this::handleRespondInvite);
@@ -67,7 +70,12 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             String name = extract(body, "name");
+
+            // ĐÃ FIX: Bắt cả 'desc' và 'description'
             String desc = extract(body, "desc");
+            if (desc.isEmpty())
+                desc = extract(body, "description");
+
             String start = extract(body, "startDate");
             String end = extract(body, "endDate");
             String priority = extract(body, "priority");
@@ -132,10 +140,10 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = requestBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String password = requestBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String fullName = requestBody.split("\"fullName\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String email = requestBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String username = extract(requestBody, "username");
+                    String password = extract(requestBody, "password");
+                    String fullName = extract(requestBody, "fullName");
+                    String email = extract(requestBody, "email");
 
                     boolean isSuccess = userDAO.register(username, password, fullName, email);
                     if (isSuccess)
@@ -174,10 +182,10 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = reqBody.split("\"username\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String fullname = reqBody.split("\"fullname\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String email = reqBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String password = reqBody.split("\"password\"\\s*:\\s*\"")[1].split("\"")[0];
+                    String username = extract(reqBody, "username");
+                    String fullname = extract(reqBody, "fullname");
+                    String email = extract(reqBody, "email");
+                    String password = extract(reqBody, "password");
 
                     int result = userDAO.addUserByAdmin(username, password, fullname, email);
                     if (result == 1)
@@ -208,17 +216,10 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String idStr = reqBody.split("\"id\"\\s*:\\s*")[1].split("[,}]")[0].trim();
-                    int id = Integer.parseInt(idStr);
-                    String fullname = reqBody.split("\"fullname\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String email = reqBody.split("\"email\"\\s*:\\s*\"")[1].split("\"")[0];
-                    String password = "";
-
-                    if (reqBody.contains("\"password\"")) {
-                        String[] split = reqBody.split("\"password\"\\s*:\\s*\"");
-                        if (split.length > 1 && split[1].startsWith("\""))
-                            password = split[1].split("\"")[1];
-                    }
+                    int id = Integer.parseInt(extract(reqBody, "id"));
+                    String fullname = extract(reqBody, "fullname");
+                    String email = extract(reqBody, "email");
+                    String password = extract(reqBody, "password");
 
                     int result = userDAO.updateUser(id, fullname, email, password);
                     if (result == 1)
@@ -246,8 +247,7 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String idStr = reqBody.split("\"id\"\\s*:\\s*")[1].split("[,}]")[0].trim();
-                    int id = Integer.parseInt(idStr);
+                    int id = Integer.parseInt(extract(reqBody, "id"));
                     boolean isDeleted = userDAO.deleteUser(id);
                     if (isDeleted)
                         sendResponse(exchange, 200, "{\"success\": true}");
@@ -272,8 +272,7 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String idStr = reqBody.split("\"id\"\\s*:\\s*")[1].split("[,}]")[0].trim();
-                    int id = Integer.parseInt(idStr);
+                    int id = Integer.parseInt(extract(reqBody, "id"));
                     boolean isSuccess = userDAO.toggleUserLock(id);
                     if (isSuccess)
                         sendResponse(exchange, 200, "{\"success\": true}");
@@ -299,6 +298,15 @@ public class ApiServer {
             if (priority.isEmpty())
                 priority = "MEDIUM";
 
+            // ĐÃ FIX: Bắt cả 'desc' và 'description' cho phần Cập nhật luôn
+            String desc = extract(body, "desc");
+            if (desc.isEmpty())
+                desc = extract(body, "description");
+
+            String name = extract(body, "name");
+            String status = extract(body, "status");
+            String endDate = extract(body, "endDate");
+
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
@@ -308,8 +316,7 @@ public class ApiServer {
                 return;
             }
 
-            boolean ok = new ProjectDAO().updateProject(pid, extract(body, "name"), extract(body, "desc"),
-                    extract(body, "status"), extract(body, "endDate"), priority);
+            boolean ok = new ProjectDAO().updateProject(pid, name, desc, status, endDate, priority);
             sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xong\"}" : "{\"error\":\"Lỗi CSDL\"}");
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
@@ -345,7 +352,6 @@ public class ApiServer {
         }
     }
 
-    // 💥 ĐÂY LÀ HÀM QUAN TRỌNG NHẤT ĐÃ ĐƯỢC SỬA 💥
     private void handleAddMember(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
@@ -372,7 +378,6 @@ public class ApiServer {
             if (inviterName.isEmpty())
                 inviterName = "Quản lý dự án";
 
-            // Gọi hàm inviteMember có chứa gửi Email và Chuông thông báo
             String result = new ProjectMemberDAO().inviteMember(projectId, projectName, identifier, role, inviterName);
 
             if ("SUCCESS".equals(result)) {
@@ -452,9 +457,20 @@ public class ApiServer {
         ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, User-ID");
     }
 
+    // 💥 ĐÃ FIX: HÀM EXTRACT ĐƯỢC NÂNG CẤP THÔNG MINH HƠN 💥
     private String extract(String json, String key) {
-        Matcher m = Pattern.compile("\"" + key + "\":\\s*\"?(.*?)\"?(?:[,}]|\\s)").matcher(json);
-        return m.find() ? m.group(1).trim() : "";
+        // Cố gắng tìm giá trị dạng chuỗi (nằm trong ngoặc kép "") - lấy luôn cả dấu
+        // cách, \n...
+        Matcher mString = Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
+        if (mString.find())
+            return mString.group(1).trim();
+
+        // Cố gắng tìm giá trị dạng số hoặc boolean (không có ngoặc kép)
+        Matcher mNum = Pattern.compile("\"" + key + "\"\\s*:\\s*([a-zA-Z0-9\\.]+)").matcher(json);
+        if (mNum.find())
+            return mNum.group(1).trim();
+
+        return "";
     }
 
     private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
