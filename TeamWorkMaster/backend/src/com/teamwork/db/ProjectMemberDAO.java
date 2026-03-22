@@ -166,4 +166,37 @@ public class ProjectMemberDAO {
         }
         return json.append("]").toString();
     }
+
+    // 1. Cập nhật quyền hạn của thành viên (Thăng cấp / Giáng cấp)
+    public boolean updateRole(int projectId, int userId, String newRole) {
+        String sql = "UPDATE TBL_PROJECT_MEMBERS SET Role = ? WHERE ProjectID = ? AND UserID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newRole);
+            pstmt.setInt(2, projectId);
+            pstmt.setInt(3, userId);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 2. Xóa thành viên khỏi dự án (Kick hoặc Tự rời đi)
+    public boolean removeMember(int projectId, int userId) {
+        String sql = "DELETE FROM TBL_PROJECT_MEMBERS WHERE ProjectID = ? AND UserID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, projectId);
+            pstmt.setInt(2, userId);
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

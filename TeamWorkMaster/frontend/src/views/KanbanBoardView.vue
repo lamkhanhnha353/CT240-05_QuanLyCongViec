@@ -66,21 +66,107 @@
           <span v-if="currentTab === 'meeting'" class="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase rounded-md shrink-0">LIVE</span>
         </div>
         
-        <div class="flex space-x-3 shrink-0 pl-4">
-          <button v-if="['OWNER', 'MANAGER'].includes(userRole) && currentTab === 'board'" @click="showMemberModal = true" class="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all border border-blue-100 flex items-center">
+        <div class="flex space-x-3 shrink-0 pl-4 items-center">
+          <button v-if="['OWNER', 'MANAGER'].includes(userRole)" @click="showMemberModal = true" class="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all border border-blue-100 flex items-center">
             <span class="mr-2">👥</span> Mời Thành Viên
+          </button>
+          
+          <button @click="toggleMemberSidebar" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-slate-200 dark:border-slate-600 flex items-center">
+            <span class="mr-2">🧑‍🤝‍🧑</span> Thành viên ({{ projectMembers.length }})
           </button>
         </div>
       </header>
 
-     <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
-      
+      <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
       <MeetingRoom v-if="currentTab === 'meeting'" :projectId="projectId" :projectName="projectName" :userRole="userRole" />
-      
       <ProjectChat v-if="currentTab === 'chat'" :projectId="projectId" />
 
     </main>
 
+    <div v-if="isMemberSidebarOpen" @click="toggleMemberSidebar" class="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-sm z-40 transition-opacity"></div>
+    <aside :class="isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'" class="fixed top-0 right-0 w-80 lg:w-96 h-screen bg-white dark:bg-slate-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 flex flex-col">
+      
+      <div class="h-16 px-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-800/50">
+        <h3 class="font-black text-slate-800 dark:text-white flex items-center">
+          <span class="text-xl mr-2">👥</span> Quản lý Thành viên
+        </h3>
+        <button @click="toggleMemberSidebar" class="p-2 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-white transition-colors outline-none">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+        
+        <div>
+          <h4 class="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center px-2">
+            <span class="mr-2">👑</span> Ban Quản Trị ({{ managers.length }})
+          </h4>
+          <div class="space-y-2">
+            <div v-for="user in managers" :key="user.id" class="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center group hover:shadow-md transition-all relative">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 text-white font-black flex items-center justify-center shrink-0 uppercase shadow-sm">
+                {{ user.fullName.charAt(0) }}
+              </div>
+              <div class="ml-3 flex-1 min-w-0">
+                <p class="text-sm font-bold text-slate-800 dark:text-white truncate flex items-center">
+                  {{ user.fullName }}
+                  <span v-if="user.role === 'OWNER'" class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[8px] rounded-md border border-yellow-200">OWNER</span>
+                  <span v-if="user.role === 'MANAGER'" class="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[8px] rounded-md border border-purple-200">MANAGER</span>
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
+              </div>
+
+              <div v-if="userRole === 'OWNER' && user.role !== 'OWNER'" class="relative" v-click-outside="() => { if(activeActionMenu === user.id) activeActionMenu = null }">
+                <button @click.stop="toggleActionMenu(user.id)" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </button>
+                <div v-if="activeActionMenu === user.id" class="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 py-1 overflow-hidden">
+                  <button @click="updateMemberRole(user.id, 'MEMBER')" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200">👇 Giáng xuống Thành viên</button>
+                  <div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                  <button @click="kickMember(user.id, user.fullName)" class="w-full text-left px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-500/10 text-sm font-bold text-red-500">🗑️ Xóa khỏi dự án</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center px-2 mt-4">
+            <span class="mr-2">👤</span> Thành Viên ({{ regularMembers.length }})
+          </h4>
+          <div v-if="regularMembers.length === 0" class="text-center py-6 text-xs text-slate-400 font-medium italic border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+            Chưa có thành viên nào.
+          </div>
+          <div class="space-y-2">
+            <div v-for="user in regularMembers" :key="user.id" class="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl flex items-center group hover:shadow-md transition-all relative">
+              <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black flex items-center justify-center shrink-0 uppercase border border-slate-200 dark:border-slate-600">
+                {{ user.fullName.charAt(0) }}
+              </div>
+              <div class="ml-3 flex-1 min-w-0">
+                <p class="text-sm font-bold text-slate-800 dark:text-white truncate">{{ user.fullName }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
+              </div>
+
+              <div v-if="['OWNER', 'MANAGER'].includes(userRole)" class="relative" v-click-outside="() => { if(activeActionMenu === user.id) activeActionMenu = null }">
+                <button @click.stop="toggleActionMenu(user.id)" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-all">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </button>
+                <div v-if="activeActionMenu === user.id" class="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 py-1 overflow-hidden">
+                  <button v-if="userRole === 'OWNER'" @click="updateMemberRole(user.id, 'MANAGER')" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200">👆 Thăng làm Quản lý</button>
+                  <div v-if="userRole === 'OWNER'" class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                  <button @click="kickMember(user.id, user.fullName)" class="w-full text-left px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-500/10 text-sm font-bold text-red-500">🗑️ Xóa khỏi dự án</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="userRole !== 'OWNER'" class="p-6 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-slate-50 dark:bg-slate-800/50">
+        <button @click="leaveProject" class="w-full py-3 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 text-red-500 font-bold rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-all flex justify-center items-center">
+          <span class="mr-2">🚪</span> Rời khỏi dự án
+        </button>
+      </div>
+    </aside>
     <div v-if="showMemberModal" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-2xl p-8 relative overflow-visible animate-fade-in text-slate-800 dark:text-white">
         <h2 class="text-2xl font-bold mb-2">Mời vào dự án</h2>
@@ -110,13 +196,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import KanbanBoard from "@/components/KanbanBoard.vue";
 import MeetingRoom from "@/components/MeetingRoom.vue";
 import ProjectChat from "@/components/ProjectChat.vue";
-
-// 🟢 1. IMPORT USETOAST VÀO ĐÂY 🟢
 import { useToast } from "../composables/useToast";
 
 const vClickOutside = {
@@ -126,14 +210,13 @@ const vClickOutside = {
 
 const route = useRoute();
 const router = useRouter();
-
-// 🟢 2. KHỞI TẠO HÀM ADDTOAST 🟢
 const { addToast } = useToast();
 
 const projectId = route.params.projectId; 
 const projectName = ref(route.query.projectName || "Dự án Không tên");
 const userRole = ref(route.query.role || "MEMBER");
 const currentUserName = ref(localStorage.getItem("fullName") || "Bạn"); 
+const currentUserId = ref(localStorage.getItem("userId")); // Thêm biến lưu user ID hiện tại
 
 const currentTab = ref('board');
 const isSidebarOpen = ref(true);
@@ -149,12 +232,79 @@ const toggleTheme = () => {
 
 const handleLogout = () => { localStorage.removeItem("isLoggedIn"); router.push("/"); };
 
-onMounted(() => {
-  if (!projectId) { alert("Lỗi: Không tìm thấy dự án!"); router.push('/projects'); return; }
-  if (isDarkMode.value) document.documentElement.classList.add('dark');
-  else document.documentElement.classList.remove('dark');
-});
+// ==========================================
+// 🟢 STATE & LOGIC CHO SIDEBAR THÀNH VIÊN
+// ==========================================
+const isMemberSidebarOpen = ref(false);
+const projectMembers = ref([]);
+const activeActionMenu = ref(null);
 
+// Lọc dữ liệu ra 2 nhóm: Quản trị và Thành viên
+const managers = computed(() => projectMembers.value.filter(m => m.role === 'OWNER' || m.role === 'MANAGER'));
+const regularMembers = computed(() => projectMembers.value.filter(m => m.role === 'MEMBER'));
+
+const toggleMemberSidebar = () => { 
+  isMemberSidebarOpen.value = !isMemberSidebarOpen.value; 
+  if (isMemberSidebarOpen.value) {
+    fetchProjectMembers(); // Cập nhật lại list mỗi khi mở sidebar
+  }
+};
+
+const toggleActionMenu = (userId) => {
+  activeActionMenu.value = activeActionMenu.value === userId ? null : userId;
+};
+
+// Gọi API lấy danh sách thành viên
+const fetchProjectMembers = async () => {
+  try {
+    const res = await fetch(`http://localhost:8080/api/projects/members-list?projectId=${projectId}`);
+    if (res.ok) projectMembers.value = await res.json();
+  } catch (error) { addToast("Lỗi lấy danh sách thành viên", "error"); }
+};
+
+// Gọi API thăng/giáng quyền
+const updateMemberRole = async (targetUserId, newRole) => {
+  activeActionMenu.value = null;
+  try {
+    const res = await fetch("http://localhost:8080/api/projects/update-role", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, targetUserId, newRole })
+    });
+    if (res.ok) { addToast("Đã cập nhật quyền thành công!", "success"); fetchProjectMembers(); } 
+    else { addToast("Không thể cập nhật quyền", "error"); }
+  } catch(e) { addToast("Lỗi kết nối", "error"); }
+};
+
+// Gọi API kích người
+const kickMember = async (targetUserId, targetName) => {
+  activeActionMenu.value = null;
+  if(!confirm(`Xóa ${targetName} khỏi dự án?`)) return;
+  try {
+    const res = await fetch("http://localhost:8080/api/projects/remove-member", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, targetUserId })
+    });
+    if (res.ok) { addToast(`Đã xóa ${targetName}!`, "success"); fetchProjectMembers(); }
+    else { addToast("Lỗi không thể xóa", "error"); }
+  } catch(e) { addToast("Lỗi kết nối", "error"); }
+};
+
+// Gọi API tự rời dự án
+const leaveProject = async () => {
+  if(!confirm("RỜI KHỎI dự án này? Hành động này không thể hoàn tác!")) return;
+  try {
+    const res = await fetch("http://localhost:8080/api/projects/remove-member", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, targetUserId: currentUserId.value })
+    });
+    if (res.ok) { addToast("Bạn đã rời khỏi dự án!", "success"); router.push("/projects"); }
+    else { addToast("Không thể rời dự án", "error"); }
+  } catch(e) { addToast("Lỗi kết nối", "error"); }
+};
+
+// ==========================================
+// 🟢 LOGIC MỜI THÀNH VIÊN (GIỮ NGUYÊN)
+// ==========================================
 const showMemberModal = ref(false);
 const memberSearchQuery = ref("");
 const searchResults = ref([]);
@@ -176,7 +326,6 @@ const handleSearchInput = () => {
 
 const selectUser = (user) => { memberSearchQuery.value = user.email; showDropdown.value = false; };
 
-// 🟢 3. SỬA LẠI HÀM SUBMIT ĐỂ DÙNG TOAST 🟢
 const submitInvite = async () => {
   if (!memberSearchQuery.value) {
     addToast("Vui lòng nhập Email hoặc Username!", "warning");
@@ -197,16 +346,26 @@ const submitInvite = async () => {
     
     if (res.ok) {
       showMemberModal.value = false;
-      addToast("Đã gửi lời mời thành công!", "success"); // Thông báo xanh xịn xò
-      memberSearchQuery.value = ""; // Xóa trắng ô nhập để lần sau mời người khác
+      addToast("Đã gửi lời mời thành công!", "success");
+      memberSearchQuery.value = "";
+      if(isMemberSidebarOpen.value) fetchProjectMembers(); // Load lại DS thành viên nếu sidebar đang mở
     } else { 
       const data = await res.json();
-      addToast(data.error || "Lỗi gửi lời mời", "error"); // Báo lỗi đỏ
+      addToast(data.error || "Lỗi gửi lời mời", "error");
     }
   } catch (error) {
     addToast("Lỗi kết nối máy chủ", "error");
   }
 };
+
+onMounted(() => {
+  if (!projectId) { alert("Lỗi: Không tìm thấy dự án!"); router.push('/projects'); return; }
+  if (isDarkMode.value) document.documentElement.classList.add('dark');
+  else document.documentElement.classList.remove('dark');
+  
+  // Nạp ngầm danh sách thành viên để hiện số lượng ngay trên nút bấm ở Header
+  fetchProjectMembers();
+});
 </script>
 
 <style scoped>

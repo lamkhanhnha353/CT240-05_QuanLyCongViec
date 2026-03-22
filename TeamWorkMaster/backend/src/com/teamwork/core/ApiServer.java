@@ -58,6 +58,8 @@ public class ApiServer {
 
         server.createContext("/api/project-chat", new ProjectChatHandler());
         server.createContext("/api/meetings", new MeetingHandler());
+        server.createContext("/api/projects/update-role", this::handleUpdateMemberRole);
+        server.createContext("/api/projects/remove-member", this::handleRemoveMember);
         server.setExecutor(null);
     }
 
@@ -939,5 +941,55 @@ public class ApiServer {
         if (data == null)
             return "";
         return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+    }
+
+    // API: CẬP NHẬT QUYỀN THÀNH VIÊN
+    private void handleUpdateMemberRole(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            int targetUserId = Integer.parseInt(extract(body, "targetUserId"));
+            String newRole = extract(body, "newRole");
+
+            // TODO: Ở hệ thống thực tế cần check quyền của người gửi request tại đây
+            boolean ok = new ProjectMemberDAO().updateRole(projectId, targetUserId, newRole);
+            if (ok) {
+                sendResponse(ex, 200, "{\"success\": true, \"message\": \"Đã cập nhật quyền thành công!\"}");
+            } else {
+                sendResponse(ex, 400, "{\"success\": false, \"error\": \"Lỗi khi cập nhật quyền\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // API: XÓA THÀNH VIÊN HOẶC RỜI DỰ ÁN
+    private void handleRemoveMember(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        try {
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            int targetUserId = Integer.parseInt(extract(body, "targetUserId"));
+
+            boolean ok = new ProjectMemberDAO().removeMember(projectId, targetUserId);
+            if (ok) {
+                sendResponse(ex, 200, "{\"success\": true, \"message\": \"Đã xóa thành viên khỏi dự án!\"}");
+            } else {
+                sendResponse(ex, 400, "{\"success\": false, \"error\": \"Lỗi khi xóa thành viên\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
+        }
     }
 }
