@@ -114,6 +114,16 @@ CREATE TABLE TBL_COMMENTS (
     FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE TBL_PROJECT_CHAT (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    UserID INT NOT NULL,
+    Message TEXT,
+    FileUrl VARCHAR(500), -- Cột này dùng để lưu cái Link ảnh/file từ Cloudinary trả về
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+);
 
 -- =========================================================================
 -- DỮ LIỆU MẪU BAN ĐẦU

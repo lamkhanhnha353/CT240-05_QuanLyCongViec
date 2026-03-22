@@ -54,6 +54,9 @@ public class ApiServer {
         server.createContext("/api/notifications/list", this::handleGetNotifications);
         server.createContext("/api/notifications/respond", this::handleRespondInvite);
 
+
+        server.createContext("/api/project-chat", new ProjectChatHandler());
+
         server.setExecutor(null);
     }
 
@@ -509,6 +512,74 @@ public class ApiServer {
                 } catch (Exception e) {
                     sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Dữ liệu không hợp lệ\"}");
                 }
+            }
+        }
+    }
+
+    // ==========================================
+    // API CHAT TỔNG DỰ ÁN (CÓ HỖ TRỢ FILE)
+    // ==========================================
+    // ==========================================
+    // API CHAT TỔNG DỰ ÁN (CÓ HỖ TRỢ FILE & XÓA)
+    // ==========================================
+    class ProjectChatHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equals(method)) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            ProjectChatDAO chatDAO = new ProjectChatDAO();
+            try {
+                if ("GET".equals(method)) {
+                    String query = exchange.getRequestURI().getQuery();
+                    int projectId = 0;
+                    if (query != null && query.contains("projectId=")) {
+                        projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
+                    }
+                    sendResponse(exchange, 200, chatDAO.getMessages(projectId));
+
+                } else if ("POST".equals(method)) {
+                    String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+
+                    int projectId = Integer.parseInt(extract(requestBody, "projectId"));
+                    String content = extract(requestBody, "content");
+                    String fileUrl = extract(requestBody, "fileUrl");
+
+                    String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
+                    int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+                    if (userId > 0 && chatDAO.addMessage(projectId, userId, content, fileUrl)) {
+                        sendResponse(exchange, 200, "{\"success\": true}");
+                    } else {
+                        sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Lỗi thêm tin nhắn\"}");
+                    }
+
+                }
+                // 🟢 THÊM ĐOẠN NÀY ĐỂ XỬ LÝ LỆNH THU HỒI TIN NHẮN 🟢
+                else if ("DELETE".equals(method)) {
+                    String query = exchange.getRequestURI().getQuery();
+                    int messageId = 0;
+                    if (query != null && query.contains("messageId=")) {
+                        messageId = Integer.parseInt(query.split("messageId=")[1].split("&")[0]);
+                    }
+
+                    String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
+                    int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+                    if (userId > 0 && chatDAO.deleteMessage(messageId, userId)) {
+                        sendResponse(exchange, 200, "{\"success\": true}");
+                    } else {
+                        sendResponse(exchange, 400,
+                                "{\"success\": false, \"message\": \"Không thể thu hồi tin nhắn\"}");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
             }
         }
     }

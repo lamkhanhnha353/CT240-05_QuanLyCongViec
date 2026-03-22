@@ -41,6 +41,7 @@ const router = createRouter({
       component: () => import('../views/KanbanBoardView.vue')
      },
 
+
     // ==========================================
     // KHU VỰC CẤM - CHỈ DÀNH CHO ADMIN
     // ==========================================
