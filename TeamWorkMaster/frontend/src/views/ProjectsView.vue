@@ -53,15 +53,26 @@
                 <div v-if="notifications.length === 0" class="p-6 text-center text-slate-400 text-sm font-medium">
                   Bạn không có thông báo nào.
                 </div>
-                <div v-for="notif in notifications" :key="notif.id" class="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors" :class="notif.isRead ? 'opacity-60' : 'bg-blue-50/30'">
+                <div v-for="notif in notifications" :key="notif.id" class="p-4 border-b border-slate-50 transition-colors" :class="notif.isRead ? 'bg-white opacity-60' : 'bg-blue-50/50 hover:bg-blue-50'">
                   <p class="text-sm font-bold text-slate-800 mb-1">{{ notif.title }}</p>
                   <p class="text-xs text-slate-600 leading-relaxed mb-3">{{ notif.message }}</p>
                   
-                  <div v-if="!notif.isRead" class="flex space-x-2">
-                    <button @click="respondInvite(notif, true)" class="flex-1 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all">Đồng ý</button>
-                    <button @click="respondInvite(notif, false)" class="flex-1 py-1.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all">Từ chối</button>
+                  <div v-if="!notif.isRead">
+                    <div v-if="notif.title === 'Lời mời dự án mới'" class="flex space-x-2">
+                      <button @click="respondInvite(notif, true)" class="flex-1 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all">Đồng ý</button>
+                      <button @click="respondInvite(notif, false)" class="flex-1 py-1.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all">Từ chối</button>
+                    </div>
+                    
+                    <div v-else class="flex justify-end">
+                      <button @click="markAsRead(notif.id)" class="px-4 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-300 hover:text-slate-800 transition-all">
+                        Đã hiểu
+                      </button>
+                    </div>
                   </div>
-                  <div v-else class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã xử lý</div>
+
+                  <div v-else class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <span class="mr-1">✓</span> Đã xử lý
+                  </div>
                 </div>
               </div>
             </div>
@@ -226,6 +237,22 @@ const fetchNotifications = async () => {
     const response = await fetch("http://localhost:8080/api/notifications/list", { headers: { "User-ID": userId } });
     if (response.ok) notifications.value = await response.json();
   } catch (error) { console.error("Lỗi fetch thông báo", error); }
+};
+
+const markAsRead = async (notifId) => {
+  const userId = localStorage.getItem("userId");
+  try {
+    const response = await fetch(`http://localhost:8080/api/notifications/read?id=${notifId}`, {
+      method: "PUT",
+      headers: { "User-ID": userId }
+    });
+    if (response.ok) {
+      // Cập nhật lại danh sách thông báo để nó mờ đi
+      fetchNotifications(); 
+    }
+  } catch (error) {
+    console.error("Lỗi cập nhật trạng thái thông báo", error);
+  }
 };
 
 const respondInvite = async (notif, isAccept) => {

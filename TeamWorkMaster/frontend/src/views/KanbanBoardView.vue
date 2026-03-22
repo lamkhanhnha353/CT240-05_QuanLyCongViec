@@ -73,8 +73,10 @@
         </div>
       </header>
 
-      <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
-      <MeetingRoom v-if="currentTab === 'meeting'" :projectId="projectId" :projectName="projectName" />
+     <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
+      
+      <MeetingRoom v-if="currentTab === 'meeting'" :projectId="projectId" :projectName="projectName" :userRole="userRole" />
+      
       <ProjectChat v-if="currentTab === 'chat'" :projectId="projectId" />
 
     </main>
@@ -114,6 +116,9 @@ import KanbanBoard from "@/components/KanbanBoard.vue";
 import MeetingRoom from "@/components/MeetingRoom.vue";
 import ProjectChat from "@/components/ProjectChat.vue";
 
+// 🟢 1. IMPORT USETOAST VÀO ĐÂY 🟢
+import { useToast } from "../composables/useToast";
+
 const vClickOutside = {
   mounted(el, binding) { el.clickOutsideEvent = function(event) { if (!(el === event.target || el.contains(event.target))) binding.value(event, el); }; document.body.addEventListener('click', el.clickOutsideEvent); },
   unmounted(el) { document.body.removeEventListener('click', el.clickOutsideEvent); }
@@ -122,15 +127,15 @@ const vClickOutside = {
 const route = useRoute();
 const router = useRouter();
 
+// 🟢 2. KHỞI TẠO HÀM ADDTOAST 🟢
+const { addToast } = useToast();
+
 const projectId = route.params.projectId; 
 const projectName = ref(route.query.projectName || "Dự án Không tên");
 const userRole = ref(route.query.role || "MEMBER");
 const currentUserName = ref(localStorage.getItem("fullName") || "Bạn"); 
 
-// Trạng thái quản lý Component đang hiển thị ('board' hoặc 'meeting')
 const currentTab = ref('board');
-
-// State Sidebar & Theme
 const isSidebarOpen = ref(true);
 const isDarkMode = ref(localStorage.getItem('theme') === 'dark');
 
@@ -150,7 +155,6 @@ onMounted(() => {
   else document.documentElement.classList.remove('dark');
 });
 
-// Logic Mời thành viên (Giữ lại ở View gốc để có thể dùng khi đổi tab nếu muốn)
 const showMemberModal = ref(false);
 const memberSearchQuery = ref("");
 const searchResults = ref([]);
@@ -169,15 +173,39 @@ const handleSearchInput = () => {
     } catch (e) {}
   }, 400);
 };
+
 const selectUser = (user) => { memberSearchQuery.value = user.email; showDropdown.value = false; };
+
+// 🟢 3. SỬA LẠI HÀM SUBMIT ĐỂ DÙNG TOAST 🟢
 const submitInvite = async () => {
+  if (!memberSearchQuery.value) {
+    addToast("Vui lòng nhập Email hoặc Username!", "warning");
+    return;
+  }
+  
   try {
     const res = await fetch("http://localhost:8080/api/projects/add-member", { 
       method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ projectId: projectId, projectName: projectName.value, inviterName: currentUserName.value, identifier: memberSearchQuery.value, role: newMemberRole.value }) 
+      body: JSON.stringify({ 
+        projectId: projectId, 
+        projectName: projectName.value, 
+        inviterName: currentUserName.value, 
+        identifier: memberSearchQuery.value, 
+        role: newMemberRole.value 
+      }) 
     });
-    if (res.ok) showMemberModal.value = false; else alert("Lỗi gửi lời mời");
-  } catch (error) {}
+    
+    if (res.ok) {
+      showMemberModal.value = false;
+      addToast("Đã gửi lời mời thành công!", "success"); // Thông báo xanh xịn xò
+      memberSearchQuery.value = ""; // Xóa trắng ô nhập để lần sau mời người khác
+    } else { 
+      const data = await res.json();
+      addToast(data.error || "Lỗi gửi lời mời", "error"); // Báo lỗi đỏ
+    }
+  } catch (error) {
+    addToast("Lỗi kết nối máy chủ", "error");
+  }
 };
 </script>
 

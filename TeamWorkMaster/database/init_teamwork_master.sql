@@ -125,6 +125,19 @@ CREATE TABLE TBL_PROJECT_CHAT (
     FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
 );
 
+CREATE TABLE TBL_MEETINGS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    ProjectID INT NOT NULL,
+    HostID INT NOT NULL,
+    MeetLink VARCHAR(255) NOT NULL,
+    Notes TEXT,
+    Status ENUM('ONGOING', 'ENDED') DEFAULT 'ONGOING',
+    StartTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    EndTime TIMESTAMP NULL,
+    FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (HostID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+);
+
 -- =========================================================================
 -- DỮ LIỆU MẪU BAN ĐẦU
 -- =========================================================================

@@ -7,6 +7,7 @@ import com.teamwork.model.Comment;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.regex.*;
 import com.teamwork.service.PermissionService;
@@ -56,7 +57,7 @@ public class ApiServer {
 
 
         server.createContext("/api/project-chat", new ProjectChatHandler());
-
+        server.createContext("/api/meetings", new MeetingHandler());
         server.setExecutor(null);
     }
 
@@ -584,6 +585,135 @@ public class ApiServer {
         }
     }
 
+
+    // cuộc họp meeting:
+    // ==========================================
+    // API QUẢN LÝ PHÒNG HỌP & LỊCH SỬ
+    // ==========================================
+    // ==========================================
+    // API QUẢN LÝ PHÒNG HỌP & LỊCH SỬ (CÓ THÔNG BÁO)
+    // ==========================================
+    class MeetingHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equals(method)) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            MeetingDAO meetingDAO = new MeetingDAO();
+            try {
+                if ("GET".equals(method)) {
+                    String query = exchange.getRequestURI().getQuery();
+                    int projectId = Integer.parseInt(extractQuery(query, "projectId"));
+                    String type = extractQuery(query, "type");
+
+                    if ("current".equals(type)) {
+                        sendResponse(exchange, 200, meetingDAO.getCurrentMeeting(projectId));
+                    } else {
+                        sendResponse(exchange, 200, meetingDAO.getMeetingHistory(projectId));
+                    }
+                } else if ("POST".equals(method)) {
+                    String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int projectId = Integer.parseInt(extract(requestBody, "projectId"));
+                    String meetLink = extract(requestBody, "meetLink");
+
+                    // Lấy thêm Tên dự án và Tên người mở phòng từ Frontend gửi lên
+                    String projectName = extract(requestBody, "projectName");
+                    String hostName = extract(requestBody, "hostName");
+
+                    int hostId = Integer.parseInt(exchange.getRequestHeaders().getFirst("User-ID"));
+
+                    int newMeetingId = meetingDAO.startMeeting(projectId, hostId, meetLink);
+                    if (newMeetingId > 0) {
+
+                        // 🔔 KÍCH HOẠT HỆ THỐNG THÔNG BÁO & EMAIL 🔔
+                        try {
+                            ResultSet members = meetingDAO.getProjectMembersForNotification(projectId);
+
+                            // 1. Nội dung thông báo trên Web (Ngắn gọn, KHÔNG CÓ LINK)
+                            String notifTitle = "Họp Dự Án: " + projectName;
+                            String notifContent = hostName
+                                    + " vừa mở phòng họp. Mời bạn vào mục Phòng Họp Nhóm để tham gia.";
+
+                            // 2. Nội dung Email (Chi tiết, CÓ KÈM LINK GOOGLE MEET)
+                            String emailSubject = "[Teamwork] Mời họp trực tuyến - Dự án: " + projectName;
+                            String emailContent = "Xin chào,\n\nQuản lý " + hostName + " vừa mở phòng họp cho dự án "
+                                    + projectName + ".\n\n"
+                                    + "👉 Vui lòng click vào đường link sau để tham gia ngay: " + meetLink + "\n\n"
+                                    + "Trân trọng,\nHệ thống Teamwork Master";
+
+                            NotificationDAO notifDAO = new NotificationDAO();
+
+                            while (members.next()) {
+                                int memberId = members.getInt("ID");
+                                String memberEmail = members.getString("Email"); // Lấy email từ DB
+
+                                if (memberId != hostId) { // Không tự gửi cho chính mình
+
+                                    // A. Bắn thông báo lên Chuông (Nhanh, đồng bộ)
+                                    notifDAO.addNotification(memberId, projectId, notifTitle, notifContent);
+
+                                    // B. Bắn Email qua SendGrid (Tạo một luồng chạy ngầm để không bị lag web)
+                                    new Thread(() -> {
+                                        com.teamwork.plugins.EmailService.sendEmail(memberEmail, emailSubject,
+                                                emailContent);
+                                    }).start();
+
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Lỗi gửi thông báo/email: " + e.getMessage());
+                        }
+
+                        sendResponse(exchange, 200, "{\"success\": true, \"meetingId\": " + newMeetingId + "}");
+                    } else {
+                        sendResponse(exchange, 400, "{\"success\": false}");
+                    }
+                } else if ("PUT".equals(method)) {
+                    String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    String action = extract(requestBody, "action"); // Nhận diện hành động
+                    int meetingId = Integer.parseInt(extract(requestBody, "meetingId"));
+                    String notes = extract(requestBody, "notes");
+
+                    boolean success = false;
+
+                    // Nếu là hành động "Kết thúc họp"
+                    if ("end".equals(action)) {
+                        success = meetingDAO.endMeeting(meetingId, notes);
+                    }
+                    // Nếu là hành động "Cập nhật lịch sử biên bản"
+                    else if ("updateNotes".equals(action)) {
+                        success = meetingDAO.updateMeetingNotes(meetingId, notes);
+                    }
+
+                    if (success) {
+                        sendResponse(exchange, 200, "{\"success\": true}");
+                    } else {
+                        sendResponse(exchange, 400, "{\"success\": false}");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
+            }
+        }
+
+        private String extractQuery(String query, String key) {
+            if (query == null)
+                return "";
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=");
+                if (pair.length > 1 && pair[0].equals(key))
+                    return pair[1];
+            }
+            return "";
+        }
+    }
+
+
     private void handleUpdate(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
@@ -676,9 +806,38 @@ public class ApiServer {
             if (inviterName.isEmpty())
                 inviterName = "Quản lý dự án";
 
+            // Gọi hàm bên DAO để xử lý DB và nhét thông báo Chuông
             String result = new ProjectMemberDAO().inviteMember(projectId, projectName, identifier, role, inviterName);
 
             if ("SUCCESS".equals(result)) {
+
+                // ========================================================
+                // 🟢 THÊM LOGIC BẮN EMAIL NẾU IDENTIFIER LÀ EMAIL HỢP LỆ 🟢
+                // ========================================================
+                // Kiểm tra xem chuỗi người dùng nhập vào có dạng email không (@xxx.com)
+                if (identifier.contains("@") && identifier.contains(".")) {
+                    final String targetEmail = identifier; // Tạo biến final để nhét vào Thread
+                    final String pName = projectName;
+                    final String iName = inviterName;
+
+                    new Thread(() -> {
+                        try {
+                            String emailSubject = "[Teamwork] Lời mời tham gia dự án: " + pName;
+                            String emailContent = "Xin chào,\n\n"
+                                    + iName + " vừa mời bạn tham gia vào dự án " + pName
+                                    + " trên hệ thống Teamwork Master.\n"
+                                    + "Vui lòng đăng nhập vào hệ thống web để Đồng ý hoặc Từ chối lời mời này.\n\n"
+                                    + "Trân trọng,\nHệ thống Teamwork Master";
+
+                            com.teamwork.plugins.EmailService.sendEmail(targetEmail, emailSubject, emailContent);
+                            System.out.println(">>> Đã bắn Email Lời mời dự án cho: " + targetEmail);
+                        } catch (Exception e) {
+                            System.out.println("Lỗi khi gửi email mời dự án: " + e.getMessage());
+                        }
+                    }).start();
+                }
+                // ========================================================
+
                 sendResponse(ex, 200, "{\"message\":\"Đã gửi lời mời và Email thành công!\"}");
             } else {
                 sendResponse(ex, 400, "{\"error\":\"" + result + "\"}");

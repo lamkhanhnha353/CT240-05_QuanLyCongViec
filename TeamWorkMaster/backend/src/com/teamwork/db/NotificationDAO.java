@@ -21,6 +21,25 @@ public class NotificationDAO {
         }
     }
 
+    // Hàm gửi thông báo đa năng (Dùng cho mọi loại thông báo trong dự án)
+    public void addNotification(int userId, int projectId, String title, String message) {
+        String sql = "INSERT INTO TBL_NOTIFICATIONS (UserID, ProjectID, Title, Message) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            pstmt.setInt(2, projectId);
+            pstmt.setString(3, title);
+            pstmt.setString(4, message);
+
+            pstmt.executeUpdate();
+            System.out.println("DEBUG: Đã tạo thông báo chung cho UserID=" + userId + ", ProjectID=" + projectId);
+        } catch (SQLException e) {
+            System.err.println("DEBUG: Lỗi tạo thông báo chung: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public String getUserNotifications(int userId) {
         StringBuilder json = new StringBuilder("[");
         String sql = "SELECT * FROM TBL_NOTIFICATIONS WHERE UserID = ? ORDER BY CreatedAt DESC";
