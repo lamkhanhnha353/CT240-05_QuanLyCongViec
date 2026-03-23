@@ -5,6 +5,7 @@ public class Comment {
     private String user;
     private String content;
     private String time;
+    private String fileUrl;
 
     public Comment(String id, String user, String content, String time) {
         this.id = id;
@@ -27,5 +28,13 @@ public class Comment {
 
     public String getTime() {
         return time;
+    }
+
+    public String getFileUrl() {
+        return fileUrl;
+    }
+
+    public void setFileUrl(String fileUrl) {
+        this.fileUrl = fileUrl;
     }
 }

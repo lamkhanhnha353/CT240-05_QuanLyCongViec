@@ -167,14 +167,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
-// 🟢 IMPORT COMPOSABLE USETOAST CHÍNH CHỦ CỦA BẠN 🟢
 import { useToast } from '../composables/useToast'; 
 
 const props = defineProps({
   projectId: { type: String, required: true }
 });
 
-// Lấy hàm addToast ra (Trong file của bạn, nó tên là addToast, không phải showToast)
 const { addToast } = useToast();
 
 const currentUserName = ref(localStorage.getItem("fullName") || localStorage.getItem("username") || "Bạn");
@@ -195,9 +193,6 @@ const fileInputRef = ref(null);
 const selectedFile = ref(null);
 const filePreview = ref(null);
 const isUploadingFile = ref(false);
-
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dys3ii0ow/upload";
-const UPLOAD_PRESET = "teamwork_upload";
 
 let pollingInterval = null;
 
@@ -238,7 +233,6 @@ const fetchMessagesSilently = async () => {
 const confirmModal = ref({ show: false, messageId: null });
 const confirmRevoke = (id) => { confirmModal.value = { show: true, messageId: id }; };
 
-// 🟢 GỌI HÀM addToast() MỖI KHI XÓA 🟢
 const executeRevoke = async () => {
   if (!confirmModal.value.messageId) return;
   isRevoking.value = true;
@@ -250,10 +244,10 @@ const executeRevoke = async () => {
     });
 
     if (res.ok) {
-      addToast("Đã xóa tin nhắn thành công!", "success"); // Hiện thông báo xanh
+      addToast("Đã xóa tin nhắn thành công!", "success"); 
       fetchMessages(); 
     } else {
-      addToast("Không thể xóa tin nhắn này.", "error"); // Hiện thông báo đỏ
+      addToast("Không thể xóa tin nhắn này.", "error"); 
     }
   } catch (error) {
     addToast("Đã xảy ra lỗi hệ thống.", "error");
@@ -301,16 +295,29 @@ const cancelAttachment = () => {
   if (fileInputRef.value) fileInputRef.value.value = ""; 
 };
 
+// 🟢 ĐÃ CẬP NHẬT: GỌI BIẾN MÔI TRƯỜNG CHO CLOUDINARY
 const uploadFileToCloudinary = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
+  
+  // Lấy biến môi trường (Từ file .env)
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  formData.append("upload_preset", uploadPreset);
   formData.append("folder", `Teamwork_Master/Project_${props.projectId}`); 
+  
   try {
-    const response = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+    // Dùng backticks ` để nhúng biến cloudName vào URL, và dùng /auto/upload
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { 
+      method: "POST", 
+      body: formData 
+    });
     const data = await response.json();
     return data.secure_url; 
-  } catch (error) { return null; }
+  } catch (error) { 
+    return null; 
+  }
 };
 
 const handleSend = async (event) => {

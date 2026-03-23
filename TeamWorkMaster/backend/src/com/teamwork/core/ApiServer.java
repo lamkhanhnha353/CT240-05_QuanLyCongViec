@@ -60,6 +60,7 @@ public class ApiServer {
         server.createContext("/api/meetings", new MeetingHandler());
         server.createContext("/api/projects/update-role", this::handleUpdateMemberRole);
         server.createContext("/api/projects/remove-member", this::handleRemoveMember);
+
         server.setExecutor(null);
     }
 
@@ -116,9 +117,18 @@ public class ApiServer {
                     StringBuilder json = new StringBuilder("[");
                     for (int i = 0; i < list.size(); i++) {
                         Comment c = list.get(i);
-                        json.append(String.format("{\"id\":\"%s\",\"user\":\"%s\",\"content\":\"%s\",\"time\":\"%s\"}",
-                                escapeJson(c.getId()), escapeJson(c.getUser()), escapeJson(c.getContent()),
+
+                        // 🟢 ĐÃ CẬP NHẬT: Ghép thêm "fileUrl" vào chuỗi JSON trả về cho Frontend
+                        String safeFileUrl = (c.getFileUrl() != null) ? escapeJson(c.getFileUrl()) : "";
+
+                        json.append(String.format(
+                                "{\"id\":\"%s\",\"user\":\"%s\",\"content\":\"%s\",\"fileUrl\":\"%s\",\"time\":\"%s\"}",
+                                escapeJson(String.valueOf(c.getId())),
+                                escapeJson(c.getUser()),
+                                escapeJson(c.getContent()),
+                                safeFileUrl,
                                 escapeJson(c.getTime())));
+
                         if (i < list.size() - 1)
                             json.append(",");
                     }
@@ -130,10 +140,14 @@ public class ApiServer {
                     int taskId = Integer.parseInt(extract(requestBody, "taskId"));
                     String content = extract(requestBody, "content");
 
+                    // 🟢 ĐÃ CẬP NHẬT: Lấy link ảnh/file từ Frontend gửi lên
+                    String fileUrl = extract(requestBody, "fileUrl");
+
                     String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
                     int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-                    if (userId > 0 && commentDAO.addComment(taskId, userId, content)) {
+                    // 🟢 ĐÃ CẬP NHẬT: Gọi hàm addComment truyền thêm fileUrl
+                    if (userId > 0 && commentDAO.addComment(taskId, userId, content, fileUrl)) {
                         sendResponse(exchange, 200, "{\"success\": true}");
                     } else {
                         sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Lỗi thêm bình luận\"}");
@@ -185,25 +199,31 @@ public class ApiServer {
         }
     }
 
+    // API CHỈNH SỬA CHI TIẾT CÔNG VIỆC
     private void handleTaskUpdateDetails(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
             return;
         }
+
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int taskId = Integer.parseInt(extract(body, "taskId"));
             String title = extract(body, "title");
             String desc = extract(body, "description");
-            if (desc.isEmpty())
-                desc = extract(body, "desc");
             String priority = extract(body, "priority");
             String deadline = extract(body, "deadline");
-            String assigneeStr = extract(body, "assigneeId");
-            int assigneeId = assigneeStr.isEmpty() ? 0 : Integer.parseInt(assigneeStr);
 
-            boolean ok = taskDAO.updateTaskDetails(taskId, title, desc, priority, deadline, assigneeId);
+            // Lấy thêm 3 biến mới y chang lúc Create
+            String startDate = extract(body, "startDate");
+            String tags = extract(body, "tags");
+            String assigneeIdsStr = extract(body, "assigneeIds"); // Chuỗi "1,2,3"
+
+            // Gọi hàm DAO mới đã cập nhật
+            boolean ok = taskDAO.updateTaskDetails(taskId, title, desc, priority, deadline, startDate, tags,
+                    assigneeIdsStr);
+
             if (ok)
                 sendResponse(ex, 200, "{\"message\":\"Cập nhật thành công\"}");
             else
@@ -236,22 +256,29 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
+
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
             int projectId = Integer.parseInt(extract(body, "projectId"));
             String title = extract(body, "title");
             String desc = extract(body, "description");
-            if (desc.isEmpty())
-                desc = extract(body, "desc");
             String priority = extract(body, "priority");
             if (priority.isEmpty())
                 priority = "MEDIUM";
             String deadline = extract(body, "deadline");
+            String startDate = extract(body, "startDate");
+            String tags = extract(body, "tags");
+            String status = extract(body, "targetColumn");
+            if (status.isEmpty())
+                status = "TODO";
 
-            String assigneeStr = extract(body, "assigneeId");
-            int assigneeId = assigneeStr.isEmpty() ? 0 : Integer.parseInt(assigneeStr);
+            // 🟢 HỨNG CHUỖI ID NGƯỜI DÙNG: "1,2,3" 🟢
+            String assigneeIdsStr = extract(body, "assigneeIds");
 
-            boolean ok = taskDAO.createTask(projectId, title, desc, priority, deadline, assigneeId);
+            // Truyền thẳng chuỗi assigneeIdsStr vào DAO
+            boolean ok = taskDAO.createTask(projectId, title, desc, priority, deadline, startDate, tags, status,
+                    assigneeIdsStr);
+
             if (ok)
                 sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
             else
@@ -703,6 +730,8 @@ public class ApiServer {
             }
         }
 
+        
+
         private String extractQuery(String query, String key) {
             if (query == null)
                 return "";
@@ -714,6 +743,8 @@ public class ApiServer {
             return "";
         }
     }
+
+    
 
 
     private void handleUpdate(HttpExchange ex) throws IOException {
@@ -992,4 +1023,6 @@ public class ApiServer {
             sendResponse(ex, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
         }
     }
+
+    
 }
