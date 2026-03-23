@@ -15,14 +15,21 @@
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
+          
           <div>
             <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Tên công việc</label>
-            <input v-model="taskData.title" type="text" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 focus:border-blue-500 font-bold text-lg outline-none bg-transparent" />
+            <input v-model="taskData.title" type="text" 
+                   :disabled="userRole === 'MEMBER'"
+                   class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 font-bold text-lg outline-none transition-colors"
+                   :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 cursor-not-allowed' : 'bg-transparent focus:border-blue-500 text-slate-800 dark:text-slate-200'" />
           </div>
 
           <div>
             <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Mô tả</label>
-            <textarea v-model="taskData.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 focus:border-blue-500 outline-none text-sm bg-slate-50 dark:bg-slate-900/50 custom-scrollbar resize-none"></textarea>
+            <textarea v-model="taskData.description" rows="3" 
+                      :disabled="userRole === 'MEMBER'"
+                      class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm custom-scrollbar resize-none transition-colors"
+                      :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 cursor-not-allowed' : 'bg-slate-50 dark:bg-slate-900/50 focus:border-blue-500 text-slate-800 dark:text-slate-200'"></textarea>
           </div>
 
           <div class="bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
@@ -57,23 +64,31 @@
           </div>
 
           <div class="bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-            <div class="flex justify-between items-center mb-3">
+            <div class="flex flex-col space-y-3 mb-4">
               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest flex items-center">
                 <span class="text-base mr-2">📎</span> Tài liệu đính kèm ({{ attachments.length }})
               </label>
               
-              <button @click="triggerTaskUpload" :disabled="isUploadingTaskFile" class="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 px-3 py-1.5 rounded-lg transition-colors flex items-center disabled:opacity-50">
-                <span v-if="isUploadingTaskFile" class="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-1.5"></span>
-                <span v-else>+ Tải lên</span>
-              </button>
-              <input type="file" ref="taskFileInput" @change="handleTaskFileUpload" class="hidden" />
+              <div class="flex items-center space-x-2">
+                <input v-model="newLinkUrl" type="url" placeholder="Dán link (Google Drive, Figma, Docs...)" class="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:border-blue-500 transition-colors" />
+                <button @click="addLinkAttachment" :disabled="!newLinkUrl.trim() || isUploadingTaskFile" class="text-xs font-bold text-slate-600 hover:text-blue-600 bg-white border border-slate-200 hover:border-blue-300 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:text-blue-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 shadow-sm whitespace-nowrap">
+                  Gắn Link
+                </button>
+                <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                <button @click="triggerTaskUpload" :disabled="isUploadingTaskFile" class="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors flex items-center disabled:opacity-50 shadow-sm shadow-blue-500/30 whitespace-nowrap">
+                  <span v-if="isUploadingTaskFile" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5"></span>
+                  <span v-else>+ Tải Tệp Lên</span>
+                </button>
+                <input type="file" ref="taskFileInput" @change="handleTaskFileUpload" class="hidden" />
+              </div>
             </div>
             
             <div class="space-y-2">
               <div v-for="att in attachments" :key="att.id" class="flex items-center group bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:border-blue-300">
                  
-                 <img v-if="isImage(att.fileUrl)" :src="att.fileUrl" class="w-8 h-8 rounded object-cover cursor-pointer border border-slate-200 dark:border-slate-600" @click="selectedImage = att.fileUrl"/>
-                 <div v-else class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-500 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-sm">📄</div>
+                 <img v-if="isImage(att.fileUrl)" :src="att.fileUrl" class="w-8 h-8 rounded object-cover cursor-pointer border border-slate-200 dark:border-slate-600 shrink-0" @click="selectedImage = att.fileUrl"/>
+                 <div v-else-if="att.fileUrl.startsWith('http')" class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-500 border border-purple-100 dark:border-purple-800 flex items-center justify-center text-sm shrink-0">🔗</div>
+                 <div v-else class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-500 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-sm shrink-0">📄</div>
                  
                  <div class="ml-3 flex-1 min-w-0">
                    <span v-if="isImage(att.fileUrl)" @click="selectedImage = att.fileUrl" class="cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-200 truncate block hover:text-blue-600 hover:underline">{{ att.fileName }}</span>
@@ -81,7 +96,7 @@
                    <p class="text-[9px] text-slate-400 font-medium">Bởi {{ att.user }} • {{ formatChatTime(att.time) }}</p>
                  </div>
                  
-                 <button @click="deleteAttachment(att.id)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-all" title="Xóa tài liệu">🗑️</button>
+                 <button @click="deleteAttachment(att.id)" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-lg transition-all shrink-0" title="Xóa tài liệu">🗑️</button>
               </div>
               <div v-if="attachments.length === 0" class="text-center text-xs text-slate-400 italic py-2">Chưa có tài liệu đính kèm.</div>
             </div>
@@ -89,7 +104,10 @@
 
           <div>
             <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Nhãn (Tags)</label>
-            <input v-model="taskData.tags" type="text" placeholder="Ngăn cách bằng dấu phẩy..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm bg-transparent" />
+            <input v-model="taskData.tags" type="text" placeholder="Ngăn cách bằng dấu phẩy..." 
+                   :disabled="userRole === 'MEMBER'"
+                   class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm transition-colors"
+                   :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 cursor-not-allowed' : 'bg-transparent text-slate-800 dark:text-slate-200'" />
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50">
@@ -98,44 +116,56 @@
               <div class="flex flex-wrap gap-2 mb-3">
                 <div v-for="id in taskData.assigneeIds" :key="id" class="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-lg flex items-center shadow-sm">
                   {{ getMemberName(id) }}
-                  <button @click="removeAssignee(id)" class="ml-2 text-blue-500 hover:text-red-500 transition-colors">✕</button>
+                  <button v-if="userRole !== 'MEMBER'" @click="removeAssignee(id)" class="ml-2 text-blue-500 hover:text-red-500 transition-colors">✕</button>
                 </div>
               </div>
-              <select @change="addAssignee" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold bg-white dark:bg-slate-800">
+              <select v-if="userRole !== 'MEMBER'" @change="addAssignee" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold bg-white dark:bg-slate-800">
                 <option value="">+ Thêm người thực hiện...</option>
                 <option v-for="user in unassignedMembers" :key="user.id" :value="user.id">{{ user.fullName }}</option>
               </select>
             </div>
+            
             <div>
               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Độ ưu tiên</label>
-              <select v-model="taskData.priority" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold bg-white dark:bg-slate-800">
+              <select v-model="taskData.priority" :disabled="userRole === 'MEMBER'"
+                      class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold transition-colors"
+                      :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed appearance-none' : 'bg-white dark:bg-slate-800'">
                 <option value="LOW">Thấp</option>
                 <option value="MEDIUM">Vừa</option>
                 <option value="HIGH">Cao</option>
               </select>
             </div>
+
             <div>
               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Trạng thái (Cột)</label>
-              <select v-model="taskData.status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold bg-white dark:bg-slate-800">
+              <select v-model="taskData.status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm font-bold bg-white dark:bg-slate-800 cursor-pointer hover:border-blue-400 transition-colors text-blue-600 dark:text-blue-400">
                 <option value="TODO">Cần làm</option>
                 <option value="IN_PROGRESS">Đang thực hiện</option>
                 <option value="DONE">Đã hoàn thành</option>
                 <option value="CANCEL">Đã hủy</option>
               </select>
             </div>
+
             <div>
               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Bắt đầu</label>
-              <input v-model="taskData.startDate" type="date" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm bg-white dark:bg-slate-800 dark:[color-scheme:dark]" />
+              <input v-model="taskData.startDate" type="date" :disabled="userRole === 'MEMBER'"
+                     class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm dark:[color-scheme:dark] transition-colors"
+                     :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-800'" />
             </div>
             <div>
               <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Hạn chót</label>
-              <input v-model="taskData.deadline" type="date" :min="taskData.startDate" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm bg-white dark:bg-slate-800 dark:[color-scheme:dark]" />
+              <input v-model="taskData.deadline" type="date" :min="taskData.startDate" :disabled="userRole === 'MEMBER'"
+                     class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 outline-none text-sm dark:[color-scheme:dark] transition-colors"
+                     :class="userRole === 'MEMBER' ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-800'" />
             </div>
           </div>
         </div>
 
         <div class="flex justify-between items-center mt-6 pt-6 border-t border-slate-100 dark:border-slate-700 shrink-0">
-          <button @click="deleteTask" class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center">🗑️ Xóa thẻ này</button>
+          <div>
+            <button v-if="userRole !== 'MEMBER'" @click="deleteTask" class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center">🗑️ Xóa thẻ này</button>
+          </div>
+          
           <div class="flex space-x-3">
             <button @click="$emit('close')" class="px-5 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Đóng</button>
             <button @click="submitEdit" :disabled="isSubmitting" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md transition-colors flex items-center">
@@ -210,7 +240,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 
-const props = defineProps({ task: { type: Object, required: true }, projectMembers: { type: Array, required: true }});
+// 🟢 NHẬN PROP userRole TỪ KANBAN BOARD TRUYỀN XUỐNG 🟢
+const props = defineProps({ 
+  task: { type: Object, required: true }, 
+  projectMembers: { type: Array, required: true },
+  userRole: { type: String, required: true } // "OWNER", "MANAGER", "MEMBER"
+});
+
 const emit = defineEmits(['close', 'updated']);
 
 const activeTab = ref('comments'); 
@@ -235,12 +271,9 @@ const addAssignee = (e) => { const id = parseInt(e.target.value); if(id) taskDat
 const removeAssignee = (id) => { taskData.value.assigneeIds = taskData.value.assigneeIds.filter(i => i !== id); };
 const getMemberName = (id) => { const u = props.projectMembers.find(m => m.id === id); return u ? u.fullName : 'Unknown'; };
 
-// 🟢 CHECKLIST & HIỂN THỊ "XEM THÊM" 🟢
 const subtasks = ref([]);
-const showAllSubtasks = ref(false); // Quản lý trạng thái thu gọn
-const displayedSubtasks = computed(() => {
-  return showAllSubtasks.value ? subtasks.value : subtasks.value.slice(0, 3);
-});
+const showAllSubtasks = ref(false); 
+const displayedSubtasks = computed(() => { return showAllSubtasks.value ? subtasks.value : subtasks.value.slice(0, 3); });
 
 const newSubtaskTitle = ref("");
 const isAddingSubtask = ref(false);
@@ -274,10 +307,11 @@ const deleteSubtask = async (id) => {
   } catch (e) {}
 };
 
-// TÀI LIỆU ĐÍNH KÈM TASK
+// TÀI LIỆU ĐÍNH KÈM & GẮN LINK
 const attachments = ref([]);
 const taskFileInput = ref(null);
 const isUploadingTaskFile = ref(false);
+const newLinkUrl = ref(""); // 🟢 Biến lưu link người dùng dán vào
 
 const fetchAttachments = async () => {
   try {
@@ -319,6 +353,39 @@ const handleTaskFileUpload = async (event) => {
   }
 };
 
+// 🟢 HÀM XỬ LÝ GẮN LINK URL TRỰC TIẾP 🟢
+const addLinkAttachment = async () => {
+  if (!newLinkUrl.value.trim()) return;
+  
+  let url = newLinkUrl.value.trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url; // Tự động thêm https nếu người dùng gõ thiếu
+  }
+
+  isUploadingTaskFile.value = true;
+  
+  try {
+    const userId = localStorage.getItem("userId") || 1;
+    
+    // Tự động tạo tên file dựa trên Domain của Link (VD: google.com)
+    let domainName = "Liên kết ngoài";
+    try { domainName = new URL(url).hostname; } catch(e) {}
+
+    await fetch("http://localhost:8080/api/tasks/attachments", {
+      method: "POST", headers: { "Content-Type": "application/json", "User-ID": userId },
+      body: JSON.stringify({ taskId: taskData.value.id, fileName: `Link: ${domainName}`, fileUrl: url })
+    });
+    
+    newLinkUrl.value = ""; // Xóa trắng ô input
+    fetchAttachments(); 
+    fetchTaskLogs();    
+  } catch (error) {
+    alert("Lỗi khi đính kèm link!");
+  } finally {
+    isUploadingTaskFile.value = false;
+  }
+};
+
 const deleteAttachment = async (id) => {
   if (!confirm("Xóa tài liệu này khỏi công việc?")) return;
   try {
@@ -331,7 +398,6 @@ const deleteAttachment = async (id) => {
   } catch (e) {}
 };
 
-// LỊCH SỬ HOẠT ĐỘNG
 const taskLogs = ref([]);
 const fetchTaskLogs = async () => {
   try {
@@ -347,9 +413,14 @@ const submitEdit = async () => {
     const currentUserId = localStorage.getItem("userId") || 1;
     const payload = { ...taskData.value, taskId: taskData.value.id, assigneeIds: taskData.value.assigneeIds.join(',') };
     
-    await fetch("http://localhost:8080/api/tasks/update-details", {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'User-ID': currentUserId }, body: JSON.stringify(payload)
-    });
+    // 🟢 Nếu là Member thì KHÔNG GỌI API Sửa Details (Bảo mật 2 lớp) 🟢
+    if (props.userRole !== 'MEMBER') {
+       await fetch("http://localhost:8080/api/tasks/update-details", {
+         method: 'POST', headers: { 'Content-Type': 'application/json', 'User-ID': currentUserId }, body: JSON.stringify(payload)
+       });
+    }
+    
+    // Member CHỈ ĐƯỢC gọi API đổi Trạng thái (Status)
     await fetch("http://localhost:8080/api/tasks/update-status", {
       method: "POST", headers: { "Content-Type": "application/json", 'User-ID': currentUserId },
       body: JSON.stringify({ taskId: taskData.value.id, status: taskData.value.status, oldStatus: props.task.status })
@@ -360,6 +431,7 @@ const submitEdit = async () => {
 };
 
 const deleteTask = async () => {
+  if (props.userRole === 'MEMBER') return; // Khóa UI rồi nhưng khóa thêm logic cho chắc
   if (!confirm("Chắc chắn xóa thẻ này vĩnh viễn?")) return;
   try {
     const res = await fetch("http://localhost:8080/api/tasks/delete", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId: taskData.value.id }) });
@@ -375,7 +447,6 @@ const isUploadingFile = ref(false);
 const uploadedFileUrl = ref("");
 const selectedImage = ref(null);
 
-// 🟢 INTERVAL TỰ ĐỘNG CẬP NHẬT CHAT, LỊCH SỬ VÀ CHECKLIST 🟢
 onMounted(() => { 
   fetchComments(true); 
   fetchSubtasks(); 
@@ -383,8 +454,8 @@ onMounted(() => {
   fetchTaskLogs(); 
   pollingInterval = setInterval(() => { 
     fetchComments(false); 
-    fetchTaskLogs();   // Cập nhật Lịch sử liên tục
-    fetchSubtasks();   // Cập nhật Checklist nếu ai đó đang check
+    fetchTaskLogs();   
+    fetchSubtasks();   
     fetchAttachments(); 
   }, 3000);
 });

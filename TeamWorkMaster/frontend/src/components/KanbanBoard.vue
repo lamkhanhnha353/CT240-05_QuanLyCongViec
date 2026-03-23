@@ -306,7 +306,14 @@
     </div>
 
     <TaskCreateModal v-if="showTaskModal" :projectId="projectId" :projectMembers="projectMembers" :initialColumn="columnForNewTask" @close="showTaskModal = false" @created="onTaskCreated" />
-    <TaskDetailModal v-if="showEditModal" :task="editTaskData" :projectMembers="projectMembers" @close="showEditModal = false" @updated="onTaskUpdated" />
+   <TaskDetailModal 
+        v-if="showEditModal" 
+        :task="editTaskData" 
+        :projectMembers="projectMembers" 
+        :userRole="userRole" 
+        @close="showEditModal = false" 
+        @updated="onTaskUpdated" 
+    />
   </div>
 </template>
 

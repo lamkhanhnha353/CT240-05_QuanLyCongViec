@@ -602,17 +602,82 @@ public class ApiServer {
         try {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             int taskId = Integer.parseInt(extract(body, "taskId"));
-            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
-            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+            String title = extract(body, "title");
+            String newDeadline = extract(body, "deadline");
+            String assigneeIds = extract(body, "assigneeIds");
 
-            if (taskDAO.updateTaskDetails(taskId, extract(body, "title"), extract(body, "description"),
-                    extract(body, "priority"), extract(body, "deadline"), extract(body, "startDate"),
-                    extract(body, "tags"), extract(body, "assigneeIds"))) {
-                // Ghi Log
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 1;
+
+            // =========================================================
+            // 🛡️ BƯỚC 1: KIỂM TRA QUYỀN TRƯỚC KHI CHO PHÉP SỬA
+            // =========================================================
+            String oldDeadline = "null";
+            String projectName = "Dự án";
+            String uName = "Một quản lý";
+            int projectId = 0;
+
+            try { // 🟢 ĐÃ FIX: Bỏ java.sql.Connection conn = ... ra khỏi ngoặc tròn để Java KHÔNG
+                  // tự đóng kết nối 🟢
+                java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
+
+                String sql = "SELECT t.ProjectID, t.Deadline, p.ProjectName FROM TBL_TASKS t JOIN TBL_PROJECTS p ON t.ProjectID = p.ID WHERE t.ID=?";
+                try (java.sql.PreparedStatement p1 = conn.prepareStatement(sql)) {
+                    p1.setInt(1, taskId);
+                    try (java.sql.ResultSet rs1 = p1.executeQuery()) {
+                        if (rs1.next()) {
+                            projectId = rs1.getInt("ProjectID");
+                            java.sql.Date d = rs1.getDate("Deadline");
+                            oldDeadline = (d != null) ? d.toString() : "null";
+                            projectName = rs1.getString("ProjectName");
+                        }
+                    }
+                }
+
+                // 🛑 CHỐT CHẶN BẢO MẬT
+                if (!new PermissionService().isManager(currentUserId, projectId)) {
+                    sendResponse(ex, 403,
+                            "{\"error\":\"Truy cập bị từ chối! Chỉ Quản lý hoặc Trưởng dự án mới được sửa công việc.\"}");
+                    return;
+                }
+
+                try (java.sql.PreparedStatement p2 = conn
+                        .prepareStatement("SELECT FullName FROM TBL_USERS WHERE ID=?")) {
+                    p2.setInt(1, currentUserId);
+                    try (java.sql.ResultSet rs2 = p2.executeQuery()) {
+                        if (rs2.next())
+                            uName = rs2.getString("FullName");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            // =========================================================
+            // 🚀 BƯỚC 2: TIẾN HÀNH CẬP NHẬT & BẮN EMAIL
+            // =========================================================
+            if (taskDAO.updateTaskDetails(taskId, title, extract(body, "description"), extract(body, "priority"),
+                    newDeadline, extract(body, "startDate"), extract(body, "tags"), assigneeIds)) {
+
                 taskDAO.addTaskLog(taskId, currentUserId, "Đã cập nhật chi tiết công việc");
+
+                // 🟢 BẮN EMAIL
+                String checkNewDl = (newDeadline == null || newDeadline.trim().isEmpty()) ? "null" : newDeadline;
+                if (!oldDeadline.equals(checkNewDl)) {
+                    final String fProjectName = projectName;
+                    final String fOldDl = oldDeadline;
+                    final String fNewDl = checkNewDl;
+                    final String fUName = uName;
+                    new Thread(() -> {
+                        com.teamwork.plugins.TaskActionNotifier.notifyDeadlineChanged(fProjectName, title, assigneeIds,
+                                fOldDl, fNewDl, fUName);
+                    }).start();
+                }
+
                 sendResponse(ex, 200, "{\"message\":\"Cập nhật thành công\"}");
-            } else
+            } else {
                 sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
+            }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -640,13 +705,53 @@ public class ApiServer {
         }
         try {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int projectId = Integer.parseInt(extract(body, "projectId"));
+            String title = extract(body, "title");
+            String assigneeIds = extract(body, "assigneeIds");
             String priority = extract(body, "priority").isEmpty() ? "MEDIUM" : extract(body, "priority");
             String status = extract(body, "targetColumn").isEmpty() ? "TODO" : extract(body, "targetColumn");
-            if (taskDAO.createTask(Integer.parseInt(extract(body, "projectId")), extract(body, "title"),
-                    extract(body, "description"), priority, extract(body, "deadline"), extract(body, "startDate"),
-                    extract(body, "tags"), status, extract(body, "assigneeIds")))
+
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int assignerId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 1;
+
+            if (taskDAO.createTask(projectId, title, extract(body, "description"), priority, extract(body, "deadline"),
+                    extract(body, "startDate"), extract(body, "tags"), status, assigneeIds)) {
+
+                // 🟢 IN LOG RA TERMINAL ĐỂ NHẬN DIỆN LỖI 🟢
+                System.out.println("✅ [API-Task] Tạo thẻ thành công trong DB. Bắt đầu kích hoạt Email...");
+                System.out.println("👉 Giá trị assigneeIds nhận được từ Web: [" + assigneeIds + "]");
+
+                // 🟢 BẮN EMAIL: CÓ VIỆC MỚI
+                new Thread(() -> {
+                    try {
+                        java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
+                        String pName = "Dự án";
+                        String uName = "Quản lý";
+
+                        try (java.sql.PreparedStatement p1 = conn
+                                .prepareStatement("SELECT ProjectName FROM TBL_PROJECTS WHERE ID=?")) {
+                            p1.setInt(1, projectId);
+                            try (java.sql.ResultSet rs1 = p1.executeQuery()) {
+                                if (rs1.next())
+                                    pName = rs1.getString("ProjectName");
+                            }
+                        }
+                        try (java.sql.PreparedStatement p2 = conn
+                                .prepareStatement("SELECT FullName FROM TBL_USERS WHERE ID=?")) {
+                            p2.setInt(1, assignerId);
+                            try (java.sql.ResultSet rs2 = p2.executeQuery()) {
+                                if (rs2.next())
+                                    uName = rs2.getString("FullName");
+                            }
+                        }
+                        com.teamwork.plugins.TaskActionNotifier.notifyNewTask(pName, title, assigneeIds, uName);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
                 sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
-            else
+            } else
                 sendResponse(ex, 400, "{\"error\":\"Tạo thất bại do lỗi CSDL\"}");
         } catch (Exception e) {
             sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
@@ -664,21 +769,57 @@ public class ApiServer {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             int taskId = Integer.parseInt(extract(body, "taskId"));
             String status = extract(body, "status");
-            String oldStatus = extract(body, "oldStatus"); // 🟢 Lấy trạng thái cũ
+            String oldStatus = extract(body, "oldStatus");
 
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
             if (taskDAO.updateTaskStatus(taskId, status)) {
-                // 🟢 Ghi Log cực kỳ chi tiết
                 String oldName = oldStatus.equals("TODO") ? "Cần làm"
                         : oldStatus.equals("IN_PROGRESS") ? "Đang thực hiện"
                                 : oldStatus.equals("DONE") ? "Đã hoàn thành" : "Đã hủy";
                 String newName = status.equals("TODO") ? "Cần làm"
                         : status.equals("IN_PROGRESS") ? "Đang thực hiện"
                                 : status.equals("DONE") ? "Đã hoàn thành" : "Đã hủy";
-
                 taskDAO.addTaskLog(taskId, currentUserId, "Đã chuyển thẻ từ: " + oldName + " ➡️ " + newName);
+
+                // 🟢 BẮN EMAIL: BÁO CÁO HOÀN THÀNH CHO SẾP
+                // 🟢 BẮN EMAIL: BÁO CÁO HOÀN THÀNH CHO SẾP
+                if ("DONE".equals(status) && !"DONE".equals(oldStatus)) {
+                    new Thread(() -> {
+                        try {
+                            java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
+                            String tTitle = "";
+                            int pId = 0;
+                            String uName = "Một thành viên";
+
+                            try (java.sql.PreparedStatement p1 = conn
+                                    .prepareStatement("SELECT Title, ProjectID FROM TBL_TASKS WHERE ID=?")) {
+                                p1.setInt(1, taskId);
+                                try (java.sql.ResultSet rs1 = p1.executeQuery()) {
+                                    if (rs1.next()) {
+                                        tTitle = rs1.getString("Title");
+                                        pId = rs1.getInt("ProjectID");
+                                    }
+                                }
+                            }
+                            try (java.sql.PreparedStatement p2 = conn
+                                    .prepareStatement("SELECT FullName FROM TBL_USERS WHERE ID=?")) {
+                                p2.setInt(1, currentUserId);
+                                try (java.sql.ResultSet rs2 = p2.executeQuery()) {
+                                    if (rs2.next())
+                                        uName = rs2.getString("FullName");
+                                }
+                            }
+                            // Truyền thêm currentUserId vào để nó đem đi so sánh
+                            com.teamwork.plugins.TaskActionNotifier.notifyTaskCompleted(pId, tTitle, currentUserId,
+                                    uName);
+                                                                                                                    
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+                }
 
                 sendResponse(ex, 200, "{\"message\":\"Cập nhật vị trí thành công\"}");
             } else

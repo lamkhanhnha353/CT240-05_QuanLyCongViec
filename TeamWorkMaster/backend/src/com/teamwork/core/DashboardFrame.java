@@ -4,6 +4,9 @@ import com.teamwork.contract.IHostContext;
 import com.teamwork.contract.IPlugin;
 import com.teamwork.db.DatabaseConnection;
 import com.teamwork.kernel.PluginLoader;
+// 🟢 IMPORT THƯ VIỆN BOT Ở ĐÂY 🟢
+import com.teamwork.plugins.DeadlineBot;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import javax.swing.*;
@@ -20,6 +23,15 @@ public class DashboardFrame extends JFrame implements IHostContext {
         setupUI();
         log("=== TEAMWORK MASTER CORE SERVER ===");
         log("Hệ thống khởi động thành công. Trạng thái: Sẵn sàng nạp Plugin.");
+
+        // 🟢 ĐÁNH THỨC CON BOT ĐÒI NỢ NGAY KHI SERVER BẬT 🟢
+        try {
+            log("-> Đang khởi động Deadline Bot (Tiến trình chạy ngầm)...");
+            DeadlineBot.startBot();
+            log("[HỆ THỐNG] Deadline Bot đã thức dậy! Tự động rà soát công việc trễ hạn.");
+        } catch (Exception ex) {
+            log("[LỖI] Không thể khởi động Deadline Bot: " + ex.getMessage());
+        }
     }
 
     private void setupUI() {

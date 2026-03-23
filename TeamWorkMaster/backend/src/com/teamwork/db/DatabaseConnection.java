@@ -6,15 +6,17 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Lớp quản lý kết nối cơ sở dữ liệu MySQL. Áp dụng Mẫu thiết kế Singleton
- * (Singleton Design Pattern) để đảm bảo toàn bộ hệ thống chỉ dùng chung 1 kết
- * nối duy nhất.
+ * Lớp quản lý kết nối cơ sở dữ liệu MySQL.
+ * 🟢 ĐÃ NÂNG CẤP: Hỗ trợ Đa luồng (Multi-threading). Mỗi luồng sẽ có một kết
+ * nối riêng!
  */
 public class DatabaseConnection {
 
     // 1. Biến static lưu trữ thể hiện (instance) duy nhất của class này
     private static DatabaseConnection instance;
-    private Connection connection;
+
+    // 🟢 ĐÃ XÓA BIẾN "private Connection connection;" ĐỂ KHÔNG DÙNG CHUNG KẾT NỐI
+    // NỮA
 
     // CẤU HÌNH DATABASE
     private final String DB_NAME = "teamwork_master";
@@ -25,45 +27,36 @@ public class DatabaseConnection {
     // MYSQL
     private final String PASSWORD = "20022005nha@";
 
-    // 2. Constructor được set là 'private' để các class khác không thể dùng từ khóa
-    // 'new'
+    // 2. Constructor: Giờ chỉ cần nạp Driver 1 lần lúc bật Server
     private DatabaseConnection() {
         try {
             // Nạp Driver MySQL
             Class.forName("com.mysql.cj.jdbc.Driver");
-            // Mở đường truyền tới Database
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("[DATABASE] DA KET NOI THANH CONG TOI MySQL: " + DB_NAME);
+            System.out.println("[HỆ THỐNG] Nạp thành công Driver MySQL đa luồng!");
         } catch (ClassNotFoundException e) {
             GlobalExceptionHandler.handle("DatabaseConnection",
                     new Exception("Không tìm thấy Driver MySQL! Hãy kiểm tra lại file .jar trong thư mục lib."));
-        } catch (SQLException e) {
-            GlobalExceptionHandler.handle("DatabaseConnection",
-                    new Exception("Lỗi kết nối CSDL (Sai mật khẩu hoặc MySQL chưa bật): " + e.getMessage()));
         }
     }
 
-    // 3. Hàm public static để các nơi khác gọi và lấy cái 'instance' duy nhất ra
-    // dùng
+    // 3. Hàm public static để lấy instance
     public static DatabaseConnection getInstance() {
         if (instance == null) {
             instance = new DatabaseConnection();
-        } else {
-            try {
-                // Nếu kết nối bị đóng hoặc đứt mạng, tự động tạo lại kết nối mới
-                if (instance.getConnection().isClosed()) {
-                    instance = new DatabaseConnection();
-                }
-            } catch (SQLException e) {
-                GlobalExceptionHandler.handle("DatabaseConnection", e);
-            }
         }
+        // 🟢 Đã bỏ đoạn check isClosed() rườm rà đi vì giờ không xài chung 1 ống nữa
         return instance;
     }
 
-    // Hàm cung cấp đối tượng Connection để thực thi các câu lệnh SQL (SELECT,
-    // INSERT...)
+    // 4. 🟢 ĐÃ SỬA: Mỗi lần gọi là tạo MỘT KẾT NỐI MỚI.
+    // Đảm bảo không bao giờ đụng hàng hay bị thằng khác đóng cửa giữa chừng!
     public Connection getConnection() {
-        return connection;
+        try {
+            return DriverManager.getConnection(URL, USER, PASSWORD);
+        } catch (SQLException e) {
+            GlobalExceptionHandler.handle("DatabaseConnection",
+                    new Exception("Lỗi kết nối CSDL (Sai mật khẩu hoặc MySQL chưa bật): " + e.getMessage()));
+            return null; // Phải return null nếu lỗi
+        }
     }
 }
