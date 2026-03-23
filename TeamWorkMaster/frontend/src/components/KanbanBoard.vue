@@ -2,7 +2,6 @@
   <div class="flex flex-col w-full h-full relative min-h-0">
     
     <div class="flex flex-col px-6 pt-4 pb-2 shrink-0 gap-3 border-b border-slate-100 dark:border-slate-800">
-      
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div class="relative flex-1 w-full max-w-md">
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
@@ -21,6 +20,9 @@
             <button @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Danh Sách">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
+            <button @click="viewMode = 'calendar'" :class="viewMode === 'calendar' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Lịch (Calendar)">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -30,7 +32,6 @@
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🏷️</span>
           <input v-model="searchTag" type="text" placeholder="Lọc nhãn..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all" />
         </div>
-
         <div class="relative shrink-0">
           <select v-model="searchAssignee" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer">
             <option value="">👤 Mọi thành viên</option>
@@ -39,7 +40,6 @@
           </select>
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">👥</span>
         </div>
-
         <div class="relative shrink-0">
           <select v-model="searchDeadline" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer" :class="searchDeadline === 'overdue' ? 'text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : ''">
             <option value="">⏳ Mọi thời hạn</option>
@@ -49,17 +49,14 @@
           </select>
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">📅</span>
         </div>
-        
         <button v-if="searchQuery || searchTag || searchAssignee || searchDeadline" @click="clearFilters" class="text-xs font-bold text-slate-500 hover:text-red-500 underline flex items-center px-2">
           Xóa lọc ✕
         </button>
       </div>
-
     </div>
 
     <div v-if="viewMode === 'board'" class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-6 pb-6 pt-4 flex items-start gap-6 custom-scrollbar w-full bg-slate-50/30 dark:bg-[#0f172a]/30">
       <div v-for="column in kanbanColumns" :key="column.id" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col h-full max-h-full">
-        
         <div class="flex justify-between items-center mb-3 px-1 shrink-0">
           <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center text-sm uppercase tracking-wider">
             <span class="w-3 h-3 rounded-full mr-2 shadow-sm" :class="column.colorClass"></span>
@@ -69,49 +66,33 @@
         </div>
 
         <div class="bg-slate-200/50 dark:bg-[#1e293b]/50 rounded-2xl p-3 pb-4 flex-1 min-h-0 overflow-y-auto flex flex-col border border-slate-200/60 dark:border-slate-700/60 shadow-inner custom-scrollbar">
-          <draggable 
-            v-model="boardTasks[column.id]" group="tasks" item-key="id" 
-            @change="onTaskMoved($event, column.id)" class="flex-1 min-h-[100px] space-y-3"
-            ghost-class="opacity-40" drag-class="cursor-grabbing" :animation="200"
-          >
+          <draggable v-model="boardTasks[column.id]" group="tasks" item-key="id" @change="onTaskMoved($event, column.id)" class="flex-1 min-h-[100px] space-y-3" ghost-class="opacity-40" drag-class="cursor-grabbing" :animation="200">
             <template #item="{ element }">
               <div v-show="matchFilter(element)" @click="openEditModal(element)" class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group" :class="getPriorityBorder(element.priority)">
-                
-                <div class="flex justify-between items-start mb-2">
-                  <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md" :class="getPriorityTag(element.priority)">{{ formatPriority(element.priority) }}</span>
-                </div>
-                
+                <div class="flex justify-between items-start mb-2"><span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md" :class="getPriorityTag(element.priority)">{{ formatPriority(element.priority) }}</span></div>
                 <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1 leading-snug pr-2" :class="column.id === 'CANCEL' ? 'line-through opacity-70' : ''">{{ element.title }}</h4>
-                
                 <div v-if="element.tags" class="flex flex-wrap gap-1.5 mb-2 mt-1">
-                  <span v-for="(tag, idx) in getTagsArray(element.tags)" :key="idx" class="px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shadow-sm" :class="getTagColor(tag)">
-                    {{ tag }}
-                  </span>
+                  <span v-for="(tag, idx) in getTagsArray(element.tags)" :key="idx" class="px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shadow-sm" :class="getTagColor(tag)">{{ tag }}</span>
                 </div>
-
                 <p v-if="element.description" class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">{{ element.description }}</p>
                 <p v-else class="text-xs text-slate-400 dark:text-slate-500 italic mb-3">Không có mô tả</p>
-                
                 <div class="flex justify-between items-center border-t border-slate-50 dark:border-slate-700/50 pt-3 mt-2">
                   <div class="flex items-center space-x-1.5 text-xs font-bold" :class="isDeadlineNear(element.deadline) && column.id !== 'DONE' && column.id !== 'CANCEL' ? 'text-red-500 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'">
                     <span>⏳</span> 
                     <span v-if="!element.startDate && (!element.deadline || element.deadline === 'null')">Chưa có hạn</span>
                     <span v-else>{{ formatDate(element.startDate) }} - {{ formatDate(element.deadline) }}</span>
                   </div>
-
                   <div class="flex -space-x-1 relative z-0">
                     <template v-if="getAssigneeArray(element.assigneeName).length > 0">
                       <div class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[9px] font-black shadow-sm" :title="getAssigneeArray(element.assigneeName)[0]">
                         {{ getAssigneeArray(element.assigneeName)[0].charAt(0).toUpperCase() }}
                       </div>
-                      <div v-if="getAssigneeArray(element.assigneeName).length > 1" 
-                           class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[9px] font-black shadow-sm" title="Nhiều người tham gia">
+                      <div v-if="getAssigneeArray(element.assigneeName).length > 1" class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-[9px] font-black shadow-sm" title="Nhiều người tham gia">
                         +{{ getAssigneeArray(element.assigneeName).length - 1 }}
                       </div>
                     </template>
                     <div v-else class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 border-dashed flex items-center justify-center text-slate-400 text-[10px]" title="Chưa phân công">?</div>
                   </div>
-
                 </div>
               </div>
             </template>
@@ -123,64 +104,124 @@
     <div v-if="viewMode === 'table'" class="flex-1 min-h-0 overflow-auto px-6 pb-6 pt-4 custom-scrollbar w-full flex flex-col bg-slate-50/30 dark:bg-[#0f172a]/30">
       <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1 min-h-0">
         <div class="overflow-y-auto custom-scrollbar flex-1 min-h-0">
-          <table class="w-full text-left border-collapse">
-            <thead class="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10 shadow-sm border-b border-slate-200 dark:border-slate-700">
-              <tr class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                <th class="py-4 px-6 font-black w-2/5">Tên công việc & Nhãn</th>
-                <th class="py-4 px-4 font-black">Trạng thái</th>
-                <th class="py-4 px-4 font-black">Ưu tiên</th>
-                <th class="py-4 px-4 font-black">Phân công</th>
-                <th class="py-4 px-6 font-black text-right">Thời gian</th>
+          <table class="w-full text-left border-collapse min-w-max">
+            <thead class="sticky top-0 bg-slate-50 dark:bg-slate-800/90 backdrop-blur-md z-10 shadow-sm border-b border-slate-200 dark:border-slate-700">
+              <tr class="text-[11px] uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <th class="py-5 px-4 font-black text-center w-16">STT</th>
+                <th class="py-5 px-4 font-black w-[40%]">Tên công việc & Nhãn</th>
+                <th class="py-5 px-4 font-black">Trạng thái</th>
+                <th class="py-5 px-4 font-black">Ưu tiên</th>
+                <th class="py-5 px-4 font-black">Phân công</th>
+                <th class="py-5 px-6 font-black text-right">Lộ trình (Timeline)</th>
               </tr>
             </thead>
             <tbody v-if="paginatedTasks.length > 0">
-              <tr v-for="task in paginatedTasks" :key="task.id" @click="openEditModal(task)" class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-blue-50/50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors group">
-                <td class="py-4 px-6">
+              <tr v-for="(task, index) in paginatedTasks" :key="task.id" @click="openEditModal(task)" class="border-b border-slate-200 dark:border-slate-700/70 hover:bg-blue-50/80 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group even:bg-slate-50/50 dark:even:bg-slate-900/40">
+                <td class="py-4 px-4 text-center font-bold text-slate-500 dark:text-slate-400">
+                  {{ (currentPage - 1) * itemsPerPage + index + 1 }}
+                </td>
+                
+                <td class="py-4 px-4">
                   <p class="font-bold text-slate-800 dark:text-white text-sm mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" :class="task.status === 'CANCEL' ? 'line-through opacity-60' : ''">{{ task.title }}</p>
-                  <div v-if="task.tags" class="flex flex-wrap gap-1 mt-1.5">
-                    <span v-for="(tag, idx) in getTagsArray(task.tags)" :key="idx" class="px-2 py-0.5 rounded text-[9px] font-black uppercase" :class="getTagColor(tag)">{{ tag }}</span>
+                  <div v-if="task.tags" class="flex flex-wrap gap-1.5 mt-1.5">
+                    <span v-for="(tag, idx) in getTagsArray(task.tags)" :key="idx" class="px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-sm" :class="getTagColor(tag)">{{ tag }}</span>
                   </div>
                 </td>
-                <td class="py-4 px-4">
-                  <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider" :class="getStatusStyle(task.status)">{{ formatStatus(task.status) }}</span>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md" :class="getPriorityTag(task.priority)">{{ formatPriority(task.priority) }}</span>
-                </td>
+                
+                <td class="py-4 px-4"><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm" :class="getStatusStyle(task.status)">{{ formatStatus(task.status) }}</span></td>
+                <td class="py-4 px-4"><span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md shadow-sm" :class="getPriorityTag(task.priority)">{{ formatPriority(task.priority) }}</span></td>
+                
                 <td class="py-4 px-4">
                   <div class="flex -space-x-1">
                     <template v-if="getAssigneeArray(task.assigneeName).length > 0">
-                      <div class="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-xs font-black shadow-sm" :title="getAssigneeArray(task.assigneeName)[0]">{{ getAssigneeArray(task.assigneeName)[0].charAt(0).toUpperCase() }}</div>
-                      <div v-if="getAssigneeArray(task.assigneeName).length > 1" class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-xs font-black shadow-sm">+{{ getAssigneeArray(task.assigneeName).length - 1 }}</div>
+                      <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-xs font-black shadow-sm" :title="getAssigneeArray(task.assigneeName)[0]">{{ getAssigneeArray(task.assigneeName)[0].charAt(0).toUpperCase() }}</div>
+                      <div v-if="getAssigneeArray(task.assigneeName).length > 1" class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-white dark:border-slate-800 flex items-center justify-center text-xs font-black shadow-sm">+{{ getAssigneeArray(task.assigneeName).length - 1 }}</div>
                     </template>
-                    <div v-else class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 border-dashed flex items-center justify-center text-slate-400 text-xs">?</div>
+                    <div v-else class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 border-dashed flex items-center justify-center text-slate-400 text-xs">?</div>
                   </div>
                 </td>
+                
                 <td class="py-4 px-6 text-right">
-                  <span class="text-sm font-bold text-slate-600 dark:text-slate-400 flex flex-col items-end">
-                    <span v-if="task.startDate && task.startDate !== 'null'" class="text-xs text-slate-400">{{ formatDate(task.startDate) }}</span>
-                    <span :class="isDeadlineNear(task.deadline) && task.status !== 'DONE' && task.status !== 'CANCEL' ? 'text-red-500' : ''">{{ formatDate(task.deadline) }}</span>
-                  </span>
+                  <div v-if="!task.startDate && (!task.deadline || task.deadline === 'null')" class="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg inline-block">Chưa có hạn</div>
+                  <div v-else class="text-xs font-bold flex items-center justify-end space-x-2 text-slate-600 dark:text-slate-400">
+                    <span class="bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded-md shadow-sm">{{ formatDateFull(task.startDate) || '---' }}</span>
+                    <span class="text-slate-300 dark:text-slate-600 font-normal">➔</span>
+                    <span class="px-2 py-1.5 rounded-md shadow-sm" :class="isDeadlineNear(task.deadline) && task.status !== 'DONE' && task.status !== 'CANCEL' ? 'text-red-600 bg-red-100 dark:bg-red-900/40 dark:text-red-400' : 'bg-slate-100 dark:bg-slate-800'">{{ formatDateFull(task.deadline) || '---' }}</span>
+                  </div>
                 </td>
               </tr>
             </tbody>
             <tbody v-else>
-              <tr><td colspan="5" class="py-12 text-center text-slate-500 font-medium">Không tìm thấy công việc nào thỏa mãn điều kiện lọc.</td></tr>
+              <tr><td colspan="6" class="py-16 text-center text-slate-500 font-medium">Không tìm thấy công việc nào thỏa mãn điều kiện lọc.</td></tr>
             </tbody>
           </table>
         </div>
         
         <div v-if="filteredAllTasks.length > 0" class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between shrink-0">
-          <span class="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Hiển thị <span class="font-bold text-slate-800 dark:text-white">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> - <span class="font-bold text-slate-800 dark:text-white">{{ Math.min(currentPage * itemsPerPage, filteredAllTasks.length) }}</span> 
-            trong <span class="font-bold text-slate-800 dark:text-white">{{ filteredAllTasks.length }}</span> việc
-          </span>
+          <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Hiển thị <span class="font-bold text-slate-800 dark:text-white">{{ (currentPage - 1) * itemsPerPage + 1 }}</span> - <span class="font-bold text-slate-800 dark:text-white">{{ Math.min(currentPage * itemsPerPage, filteredAllTasks.length) }}</span> trong <span class="font-bold text-slate-800 dark:text-white">{{ filteredAllTasks.length }}</span> việc</span>
           <div class="flex items-center space-x-2">
             <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Trước</button>
             <span class="px-3 text-sm font-bold text-slate-700 dark:text-slate-300">Trang {{ currentPage }} / {{ totalPages }}</span>
             <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Sau</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div v-if="viewMode === 'calendar'" class="flex-1 min-h-0 overflow-hidden px-6 pb-6 pt-4 flex flex-col w-full bg-slate-50/30 dark:bg-[#0f172a]/30">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1 h-full">
+        
+        <div class="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <h2 class="text-xl font-black text-slate-800 dark:text-white flex items-center">
+            📅 Tháng {{ currentMonth + 1 }}, {{ currentYear }}
+          </h2>
+          <div class="flex space-x-2">
+            <button @click="prevMonth" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+            <button @click="nextMonth" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col min-h-0">
+          
+          <div class="grid grid-cols-7 text-center border-b border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 shrink-0">
+            <div v-for="day in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="day" 
+                 class="py-3 text-xs font-black uppercase tracking-widest border-r border-slate-300 dark:border-slate-600 last:border-r-0"
+                 :class="(day === 'T7' || day === 'CN') ? 'bg-red-50/50 dark:bg-red-900/10 text-red-500' : 'text-slate-500 dark:text-slate-400'">
+              {{ day }}
+            </div>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/20 dark:bg-transparent">
+            <div class="grid grid-cols-7">
+              <div v-for="(day, idx) in calendarDays" :key="idx" 
+                   class="border-b border-r border-slate-300 dark:border-slate-600 p-2 transition-colors relative group flex flex-col min-h-[80px]"
+                   :class="[
+                     day.isCurrentMonth ? 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800' : 'bg-slate-100/50 dark:bg-[#0b1120] text-slate-400',
+                     (idx % 7 === 5 || idx % 7 === 6) && day.isCurrentMonth ? 'bg-red-50/10 dark:bg-red-900/5' : ''
+                   ]">
+                
+                <span class="text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mb-1.5 shrink-0" 
+                      :class="isToday(day.date) ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-300'">
+                  {{ day.date.getDate() }}
+                </span>
+
+                <div class="flex flex-col gap-1 flex-1">
+                  <div v-for="task in day.tasks" :key="task.id" @click="openEditModal(task)" 
+                       class="px-2 py-1 rounded-lg text-xs font-bold cursor-pointer truncate transition-transform hover:-translate-y-px shadow-sm border flex items-center"
+                       :class="getCalendarTaskStyle(task.status)">
+                    
+                    <span v-if="task.isStart && task.isEnd" class="bg-blue-500 text-white px-1.5 py-0.5 rounded-[4px] mr-1.5 text-[8px] tracking-wider shrink-0">TRONG NGÀY</span>
+                    <span v-else-if="task.isStart" class="bg-emerald-500 text-white px-1.5 py-0.5 rounded-[4px] mr-1.5 text-[8px] tracking-wider shrink-0">BẮT ĐẦU</span>
+                    <span v-else-if="task.isEnd" class="bg-red-500 text-white px-1.5 py-0.5 rounded-[4px] mr-1.5 text-[8px] tracking-wider shrink-0">HẠN CHÓT</span>
+                    
+                    <span class="truncate">{{ task.title }}</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+          </div>
       </div>
     </div>
 
@@ -214,8 +255,8 @@ const { addToast } = useToast();
 const viewMode = ref('board'); 
 const searchQuery = ref("");
 const searchTag = ref("");
-const searchAssignee = ref(""); // 🟢 Lọc người
-const searchDeadline = ref(""); // 🟢 Lọc hạn chót
+const searchAssignee = ref("");
+const searchDeadline = ref(""); 
 
 const kanbanColumns = ref([
   { id: 'TODO', title: 'Cần làm', colorClass: 'bg-slate-400' },
@@ -226,118 +267,116 @@ const kanbanColumns = ref([
 
 const boardTasks = ref({ 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] });
 
-// Nút reset tất cả bộ lọc
-const clearFilters = () => {
-  searchQuery.value = "";
-  searchTag.value = "";
-  searchAssignee.value = "";
-  searchDeadline.value = "";
-};
+const clearFilters = () => { searchQuery.value = ""; searchTag.value = ""; searchAssignee.value = ""; searchDeadline.value = ""; };
 
-// 🟢 THUẬT TOÁN BỘ LỌC ĐA ĐIỀU KIỆN (AND) 🟢
 const matchFilter = (task) => {
-  let matchName = true;
-  let matchTag = true;
-  let matchAssignee = true;
-  let matchDeadline = true;
-
-  // Lọc tên
+  let matchName = true, matchTag = true, matchAssignee = true, matchDeadline = true;
   if (searchQuery.value.trim()) matchName = task.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase());
-  
-  // Lọc tag
-  if (searchTag.value.trim()) {
-    const taskTags = task.tags ? task.tags.toLowerCase() : "";
-    matchTag = taskTags.includes(searchTag.value.trim().toLowerCase());
-  }
-
-  // Lọc người thực hiện
+  if (searchTag.value.trim()) matchTag = task.tags ? task.tags.toLowerCase().includes(searchTag.value.trim().toLowerCase()) : false;
   if (searchAssignee.value) {
-    if (searchAssignee.value === 'unassigned') {
-      matchAssignee = !task.assigneeIds || task.assigneeIds.trim() === '';
-    } else {
-      const assignees = task.assigneeIds ? task.assigneeIds.split(',') : [];
-      matchAssignee = assignees.includes(String(searchAssignee.value));
-    }
+    if (searchAssignee.value === 'unassigned') matchAssignee = !task.assigneeIds || task.assigneeIds.trim() === '';
+    else matchAssignee = task.assigneeIds ? task.assigneeIds.split(',').includes(String(searchAssignee.value)) : false;
   }
-
-  // Lọc thời hạn chót
   if (searchDeadline.value) {
-    if (!task.deadline || task.deadline === 'null') {
-      matchDeadline = false; // Bỏ qua task không có hạn chót nếu đang bật bộ lọc
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const taskDate = new Date(task.deadline);
-      taskDate.setHours(0, 0, 0, 0);
-      
-      const diffTime = taskDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      // Không lọc task đã Xong hoặc Hủy
-      if (task.status === 'DONE' || task.status === 'CANCEL') {
-         matchDeadline = false;
-      } else if (searchDeadline.value === 'overdue') {
-        matchDeadline = diffDays < 0; // Trễ hạn
-      } else if (searchDeadline.value === 'today') {
-        matchDeadline = diffDays === 0; // Hôm nay
-      } else if (searchDeadline.value === 'week') {
-        matchDeadline = diffDays >= 0 && diffDays <= 7; // Trong tuần
-      }
+    if (!task.deadline || task.deadline === 'null') matchDeadline = false;
+    else {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const taskDate = new Date(task.deadline); taskDate.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((taskDate - today) / (1000 * 60 * 60 * 24));
+      if (task.status === 'DONE' || task.status === 'CANCEL') matchDeadline = false;
+      else if (searchDeadline.value === 'overdue') matchDeadline = diffDays < 0;
+      else if (searchDeadline.value === 'today') matchDeadline = diffDays === 0;
+      else if (searchDeadline.value === 'week') matchDeadline = diffDays >= 0 && diffDays <= 7;
     }
   }
-
   return matchName && matchTag && matchAssignee && matchDeadline;
 };
 
-const getAssigneeArray = (namesStr) => {
-  if (!namesStr) return [];
-  return namesStr.split(',').map(n => n.trim()).filter(n => n);
-};
-
-const getTagsArray = (tagsStr) => {
-  if (!tagsStr) return [];
-  return tagsStr.split(',').map(t => t.trim()).filter(t => t);
-};
-
+const getAssigneeArray = (namesStr) => !namesStr ? [] : namesStr.split(',').map(n => n.trim()).filter(n => n);
+const getTagsArray = (tagsStr) => !tagsStr ? [] : tagsStr.split(',').map(t => t.trim()).filter(t => t);
 const getTagColor = (tag) => {
   const str = tag.trim().toLowerCase();
-  const colors = [
-    'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800/50', 
-    'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50', 
-    'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50', 
-    'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50', 
-    'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50', 
-    'bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400 border border-pink-200 dark:border-pink-800/50',
-    'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50',
-    'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50'
-  ];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const colors = [ 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800/50', 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50', 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50', 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50', 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50', 'bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400 border border-pink-200 dark:border-pink-800/50', 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50', 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50' ];
+  let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 };
 
-const allTasks = computed(() => [
-  ...(boardTasks.value['TODO'] || []), ...(boardTasks.value['IN_PROGRESS'] || []),
-  ...(boardTasks.value['DONE'] || []), ...(boardTasks.value['CANCEL'] || [])
-]);
+const allTasks = computed(() => [ ...(boardTasks.value['TODO'] || []), ...(boardTasks.value['IN_PROGRESS'] || []), ...(boardTasks.value['DONE'] || []), ...(boardTasks.value['CANCEL'] || []) ]);
 const filteredAllTasks = computed(() => allTasks.value.filter(task => matchFilter(task)));
 
 const currentPage = ref(1);
 const itemsPerPage = ref(7); 
 const totalPages = computed(() => Math.ceil(filteredAllTasks.value.length / itemsPerPage.value) || 1);
-const paginatedTasks = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  return filteredAllTasks.value.slice(start, start + itemsPerPage.value);
-});
+const paginatedTasks = computed(() => { const start = (currentPage.value - 1) * itemsPerPage.value; return filteredAllTasks.value.slice(start, start + itemsPerPage.value); });
 const changePage = (page) => { if (page >= 1 && page <= totalPages.value) currentPage.value = page; };
 watch(filteredAllTasks, () => { if (currentPage.value > totalPages.value) currentPage.value = totalPages.value; });
+
+// 🟢 LOGIC DẠNG LỊCH (CALENDAR) 🟢
+const currentDate = ref(new Date());
+const currentYear = computed(() => currentDate.value.getFullYear());
+const currentMonth = computed(() => currentDate.value.getMonth());
+
+const calendarDays = computed(() => {
+  const year = currentYear.value;
+  const month = currentMonth.value;
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  
+  let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+  if (startDayOfWeek === -1) startDayOfWeek = 6; 
+
+  const days = [];
+  for (let i = startDayOfWeek; i > 0; i--) {
+    const d = new Date(year, month, 1 - i);
+    days.push({ date: d, isCurrentMonth: false, tasks: getTasksForDate(d) });
+  }
+  for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
+    const d = new Date(year, month, i);
+    days.push({ date: d, isCurrentMonth: true, tasks: getTasksForDate(d) });
+  }
+  const remainingCells = (days.length > 35 ? 42 : 35) - days.length;
+  for (let i = 1; i <= remainingCells; i++) {
+    const d = new Date(year, month + 1, i);
+    days.push({ date: d, isCurrentMonth: false, tasks: getTasksForDate(d) });
+  }
+  return days;
+});
+
+// 🟢 TÌM VÀ ĐÁNH DẤU THẺ LÀ BẮT ĐẦU HAY KẾT THÚC VÀO NGÀY ĐÓ 🟢
+const getTasksForDate = (date) => {
+  const dString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const tasksOnDay = [];
+  filteredAllTasks.value.forEach(t => {
+    const isStart = t.startDate === dString;
+    const isEnd = t.deadline === dString;
+
+    if (isStart || isEnd) {
+      tasksOnDay.push({ ...t, isStart, isEnd });
+    }
+  });
+  return tasksOnDay;
+};
+
+const isToday = (date) => {
+  const today = new Date();
+  return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+};
+
+const prevMonth = () => { currentDate.value = new Date(currentYear.value, currentMonth.value - 1, 1); };
+const nextMonth = () => { currentDate.value = new Date(currentYear.value, currentMonth.value + 1, 1); };
+
+const getCalendarTaskStyle = (status) => {
+  if (status === 'DONE') return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800 opacity-70';
+  if (status === 'IN_PROGRESS') return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800';
+  if (status === 'CANCEL') return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800 opacity-50';
+  return 'bg-white text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
+};
 
 const showTaskModal = ref(false);
 const columnForNewTask = ref('TODO'); 
 const showEditModal = ref(false);
 const editTaskData = ref(null);
 const projectMembers = ref([]);
-
 const pendingMove = ref(null);
 
 onMounted(() => { fetchTasks(); fetchProjectMembers(); });
@@ -348,11 +387,9 @@ const fetchTasks = async () => {
     if (res.ok) {
         const data = await res.json();
         boardTasks.value = { 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] };
-        data.forEach(task => { 
-          boardTasks.value[task.status] ? boardTasks.value[task.status].push(task) : boardTasks.value['TODO'].push(task); 
-        });
+        data.forEach(task => { boardTasks.value[task.status] ? boardTasks.value[task.status].push(task) : boardTasks.value['TODO'].push(task); });
     }
-  } catch (error) { console.error(error); }
+  } catch (error) {}
 };
 
 const fetchProjectMembers = async () => {
@@ -364,61 +401,40 @@ const fetchProjectMembers = async () => {
 
 const saveColumnOrder = async (columnId) => {
   const taskIds = boardTasks.value[columnId].map(t => t.id).join(',');
-  try {
-    await fetch("http://localhost:8080/api/tasks/update-order", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds: taskIds })
-    });
-  } catch (error) { console.error("Lỗi lưu thứ tự"); }
+  try { await fetch("http://localhost:8080/api/tasks/update-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskIds: taskIds }) }); } catch (error) {}
 };
 
 const onTaskMoved = (event, columnId) => {
-  if (event.added) {
-    // Nếu kéo SANG CỘT KHÁC: Bật Modal xác nhận, TRƯỚC KHI lưu thì chộp lấy cái Trạng thái cũ
-    pendingMove.value = { 
-      task: event.added.element, 
-      newStatus: columnId,
-      oldStatus: event.added.element.status // Lưu giữ trạng thái cũ cho Lịch sử
-    };
-  }
-  if (event.moved) {
-    // Nếu chỉ ĐẢO VỊ TRÍ TRONG CÙNG 1 CỘT: Lưu vị trí âm thầm, không hiện hộp thoại
-    saveColumnOrder(columnId);
-  }
+  if (event.added) pendingMove.value = { task: event.added.element, newStatus: columnId, oldStatus: event.added.element.status };
+  if (event.moved) saveColumnOrder(columnId);
 };
 
-// 🟢 3. Khi bấm "Xác nhận chuyển cột"
 const confirmTaskMove = async () => {
   if (!pendingMove.value) return;
   const { task, newStatus, oldStatus } = pendingMove.value;
   try {
     task.status = newStatus; 
     const currentUserId = localStorage.getItem("userId") || 1; 
-
-    // Gửi API cập nhật cột (gửi kèm Trạng thái cũ để ghi Log)
-    await fetch("http://localhost:8080/api/tasks/update-status", {
-      method: "POST", headers: { "Content-Type": "application/json", "User-ID": currentUserId },
-      body: JSON.stringify({ taskId: task.id, status: newStatus, oldStatus: oldStatus })
-    });
-
-    // 🟢 GỌI HÀM LƯU THỨ TỰ CHO CỘT MỚI ĐỂ NÓ NẰM IM ĐÓ
+    await fetch("http://localhost:8080/api/tasks/update-status", { method: "POST", headers: { "Content-Type": "application/json", "User-ID": currentUserId }, body: JSON.stringify({ taskId: task.id, status: newStatus, oldStatus: oldStatus }) });
     await saveColumnOrder(newStatus);
-    
     addToast("Chuyển trạng thái thành công!", "success");
   } catch (error) {}
   pendingMove.value = null; 
 };
-
-// 🟢 4. Khi bấm "Hủy"
-const cancelTaskMove = () => {
-  pendingMove.value = null; 
-  fetchTasks(); // Tải lại Data để văng về chỗ cũ
-};
+const cancelTaskMove = () => { pendingMove.value = null; fetchTasks(); };
 
 const openTaskModal = (columnId) => { columnForNewTask.value = columnId; showTaskModal.value = true; };
 const onTaskCreated = () => { showTaskModal.value = false; addToast("Tạo công việc thành công!", "success"); fetchTasks(); };
 const openEditModal = (task) => { editTaskData.value = task; showEditModal.value = true; };
 const onTaskUpdated = () => { showEditModal.value = false; addToast("Đã cập nhật công việc!", "success"); fetchTasks(); };
+
+// 🟢 HÀM HIỂN THỊ ĐẦY ĐỦ NGÀY THÁNG NĂM TRONG BẢNG 🟢
+const formatDateFull = (d) => {
+  if (!d || d === 'null') return '';
+  const parts = d.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return d;
+};
 
 const formatStatus = (s) => s==='TODO'?'Cần làm':s==='IN_PROGRESS'?'Đang làm':s==='DONE'?'Hoàn thành':'Đã hủy';
 const getStatusStyle = (s) => s==='TODO'?'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300':s==='IN_PROGRESS'?'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400':s==='DONE'?'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400':'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400';
