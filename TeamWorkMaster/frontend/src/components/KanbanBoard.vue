@@ -1,35 +1,63 @@
 <template>
   <div class="flex flex-col w-full h-full relative min-h-0">
     
-    <div class="flex flex-col sm:flex-row justify-between px-6 pt-4 pb-2 shrink-0 items-start sm:items-center gap-4">
-      <div class="flex flex-1 w-full max-w-2xl gap-3">
-        <div class="relative flex-1">
+    <div class="flex flex-col px-6 pt-4 pb-2 shrink-0 gap-3 border-b border-slate-100 dark:border-slate-800">
+      
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="relative flex-1 w-full max-w-md">
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
-          <input v-model="searchQuery" type="text" placeholder="Tìm tên công việc..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
+          <input v-model="searchQuery" type="text" placeholder="Tìm tên công việc..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
         </div>
-        <div class="relative w-48 shrink-0">
+
+        <div class="flex items-center space-x-3 shrink-0">
+          <button @click="openTaskModal('TODO')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all flex items-center hover:-translate-y-0.5">
+            <span class="mr-2 text-lg leading-none">+</span> Thêm công việc
+          </button>
+
+          <div class="bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-xl flex space-x-1 shadow-inner border border-slate-300/50 dark:border-slate-700/50">
+            <button @click="viewMode = 'board'" :class="viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Kanban">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            </button>
+            <button @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Danh Sách">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-3 pb-1">
+        <div class="relative w-40 shrink-0">
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🏷️</span>
-          <input v-model="searchTag" type="text" placeholder="Lọc theo nhãn..." class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
+          <input v-model="searchTag" type="text" placeholder="Lọc nhãn..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all" />
         </div>
-      </div>
 
-      <div class="flex items-center space-x-3 shrink-0">
-        <button @click="openTaskModal('TODO')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all flex items-center hover:-translate-y-0.5">
-          <span class="mr-2 text-lg leading-none">+</span> Thêm công việc
+        <div class="relative shrink-0">
+          <select v-model="searchAssignee" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer">
+            <option value="">👤 Mọi thành viên</option>
+            <option value="unassigned">👻 Chưa phân công</option>
+            <option v-for="user in projectMembers" :key="user.id" :value="user.id">{{ user.fullName }}</option>
+          </select>
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">👥</span>
+        </div>
+
+        <div class="relative shrink-0">
+          <select v-model="searchDeadline" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer" :class="searchDeadline === 'overdue' ? 'text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : ''">
+            <option value="">⏳ Mọi thời hạn</option>
+            <option value="overdue">🔴 Đã trễ hạn</option>
+            <option value="today">🟡 Tới hạn hôm nay</option>
+            <option value="week">🔵 Trong 7 ngày tới</option>
+          </select>
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">📅</span>
+        </div>
+        
+        <button v-if="searchQuery || searchTag || searchAssignee || searchDeadline" @click="clearFilters" class="text-xs font-bold text-slate-500 hover:text-red-500 underline flex items-center px-2">
+          Xóa lọc ✕
         </button>
-
-        <div class="bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-xl flex space-x-1 shadow-inner border border-slate-300/50 dark:border-slate-700/50">
-          <button @click="viewMode = 'board'" :class="viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2 rounded-lg transition-all" title="Dạng Kanban">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-          </button>
-          <button @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2 rounded-lg transition-all" title="Dạng Danh Sách">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-          </button>
-        </div>
       </div>
+
     </div>
 
-    <div v-if="viewMode === 'board'" class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-6 pb-6 pt-2 flex items-start gap-6 custom-scrollbar w-full">
+    <div v-if="viewMode === 'board'" class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden px-6 pb-6 pt-4 flex items-start gap-6 custom-scrollbar w-full bg-slate-50/30 dark:bg-[#0f172a]/30">
       <div v-for="column in kanbanColumns" :key="column.id" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col h-full max-h-full">
         
         <div class="flex justify-between items-center mb-3 px-1 shrink-0">
@@ -92,7 +120,7 @@
       </div>
     </div>
 
-    <div v-if="viewMode === 'table'" class="flex-1 min-h-0 overflow-auto px-6 pb-6 pt-2 custom-scrollbar w-full flex flex-col">
+    <div v-if="viewMode === 'table'" class="flex-1 min-h-0 overflow-auto px-6 pb-6 pt-4 custom-scrollbar w-full flex flex-col bg-slate-50/30 dark:bg-[#0f172a]/30">
       <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1 min-h-0">
         <div class="overflow-y-auto custom-scrollbar flex-1 min-h-0">
           <table class="w-full text-left border-collapse">
@@ -137,7 +165,7 @@
               </tr>
             </tbody>
             <tbody v-else>
-              <tr><td colspan="5" class="py-12 text-center text-slate-500 font-medium">Không tìm thấy công việc nào.</td></tr>
+              <tr><td colspan="5" class="py-12 text-center text-slate-500 font-medium">Không tìm thấy công việc nào thỏa mãn điều kiện lọc.</td></tr>
             </tbody>
           </table>
         </div>
@@ -160,11 +188,9 @@
       <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8 text-center animate-fade-in border border-slate-200 dark:border-slate-700">
         <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center rounded-full mx-auto mb-5 text-3xl shadow-inner">📦</div>
         <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-3">Chuyển trạng thái?</h3>
-        <p class="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
-          Xác nhận chuyển <br/><b class="text-slate-800 dark:text-slate-200 text-lg">"{{ pendingMove.task.title }}"</b> <br/>sang cột <b class="text-blue-600 dark:text-blue-400 uppercase tracking-wide">{{ formatStatus(pendingMove.newStatus) }}</b>?
-        </p>
+        <p class="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">Xác nhận chuyển <br/><b class="text-slate-800 dark:text-slate-200 text-lg">"{{ pendingMove.task.title }}"</b> <br/>sang cột <b class="text-blue-600 dark:text-blue-400 uppercase tracking-wide">{{ formatStatus(pendingMove.newStatus) }}</b>?</p>
         <div class="flex space-x-4">
-          <button @click="cancelTaskMove" class="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-transparent hover:border-slate-300">Hủy, quay lại</button>
+          <button @click="cancelTaskMove" class="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-all border border-transparent hover:border-slate-300">Hủy</button>
           <button @click="confirmTaskMove" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 hover:-translate-y-0.5">Xác nhận ngay</button>
         </div>
       </div>
@@ -188,6 +214,8 @@ const { addToast } = useToast();
 const viewMode = ref('board'); 
 const searchQuery = ref("");
 const searchTag = ref("");
+const searchAssignee = ref(""); // 🟢 Lọc người
+const searchDeadline = ref(""); // 🟢 Lọc hạn chót
 
 const kanbanColumns = ref([
   { id: 'TODO', title: 'Cần làm', colorClass: 'bg-slate-400' },
@@ -198,15 +226,67 @@ const kanbanColumns = ref([
 
 const boardTasks = ref({ 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] });
 
+// Nút reset tất cả bộ lọc
+const clearFilters = () => {
+  searchQuery.value = "";
+  searchTag.value = "";
+  searchAssignee.value = "";
+  searchDeadline.value = "";
+};
+
+// 🟢 THUẬT TOÁN BỘ LỌC ĐA ĐIỀU KIỆN (AND) 🟢
 const matchFilter = (task) => {
   let matchName = true;
   let matchTag = true;
+  let matchAssignee = true;
+  let matchDeadline = true;
+
+  // Lọc tên
   if (searchQuery.value.trim()) matchName = task.title.toLowerCase().includes(searchQuery.value.trim().toLowerCase());
+  
+  // Lọc tag
   if (searchTag.value.trim()) {
     const taskTags = task.tags ? task.tags.toLowerCase() : "";
     matchTag = taskTags.includes(searchTag.value.trim().toLowerCase());
   }
-  return matchName && matchTag;
+
+  // Lọc người thực hiện
+  if (searchAssignee.value) {
+    if (searchAssignee.value === 'unassigned') {
+      matchAssignee = !task.assigneeIds || task.assigneeIds.trim() === '';
+    } else {
+      const assignees = task.assigneeIds ? task.assigneeIds.split(',') : [];
+      matchAssignee = assignees.includes(String(searchAssignee.value));
+    }
+  }
+
+  // Lọc thời hạn chót
+  if (searchDeadline.value) {
+    if (!task.deadline || task.deadline === 'null') {
+      matchDeadline = false; // Bỏ qua task không có hạn chót nếu đang bật bộ lọc
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const taskDate = new Date(task.deadline);
+      taskDate.setHours(0, 0, 0, 0);
+      
+      const diffTime = taskDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Không lọc task đã Xong hoặc Hủy
+      if (task.status === 'DONE' || task.status === 'CANCEL') {
+         matchDeadline = false;
+      } else if (searchDeadline.value === 'overdue') {
+        matchDeadline = diffDays < 0; // Trễ hạn
+      } else if (searchDeadline.value === 'today') {
+        matchDeadline = diffDays === 0; // Hôm nay
+      } else if (searchDeadline.value === 'week') {
+        matchDeadline = diffDays >= 0 && diffDays <= 7; // Trong tuần
+      }
+    }
+  }
+
+  return matchName && matchTag && matchAssignee && matchDeadline;
 };
 
 const getAssigneeArray = (namesStr) => {
@@ -219,9 +299,8 @@ const getTagsArray = (tagsStr) => {
   return tagsStr.split(',').map(t => t.trim()).filter(t => t);
 };
 
-// 🟢 ĐÃ FIX LẠI THUẬT TOÁN MÀU SẮC NHÃN (Bất kể hoa thường đều ra 1 màu) 🟢
 const getTagColor = (tag) => {
-  const str = tag.trim().toLowerCase(); // Chuẩn hóa về chữ thường để tính mã màu
+  const str = tag.trim().toLowerCase();
   const colors = [
     'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800/50', 
     'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50', 
@@ -259,7 +338,6 @@ const showEditModal = ref(false);
 const editTaskData = ref(null);
 const projectMembers = ref([]);
 
-// 🟢 STATE QUẢN LÝ XÁC NHẬN KÉO THẢ 🟢
 const pendingMove = ref(null);
 
 onMounted(() => { fetchTasks(); fetchProjectMembers(); });
@@ -284,35 +362,57 @@ const fetchProjectMembers = async () => {
   } catch (error) {}
 };
 
-// 🟢 LOGIC KÉO THẢ MỚI: BẬT MODAL HỎI Ý KIẾN TRƯỚC KHI LƯU 🟢
-const onTaskMoved = (event, newStatusColumn) => {
-  if (event.added) { // event.added chỉ xảy ra khi thẻ bị kéo SANG CỘT KHÁC
-    const task = event.added.element;
-    pendingMove.value = { task: task, newStatus: newStatusColumn };
+const saveColumnOrder = async (columnId) => {
+  const taskIds = boardTasks.value[columnId].map(t => t.id).join(',');
+  try {
+    await fetch("http://localhost:8080/api/tasks/update-order", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: taskIds })
+    });
+  } catch (error) { console.error("Lỗi lưu thứ tự"); }
+};
+
+const onTaskMoved = (event, columnId) => {
+  if (event.added) {
+    // Nếu kéo SANG CỘT KHÁC: Bật Modal xác nhận, TRƯỚC KHI lưu thì chộp lấy cái Trạng thái cũ
+    pendingMove.value = { 
+      task: event.added.element, 
+      newStatus: columnId,
+      oldStatus: event.added.element.status // Lưu giữ trạng thái cũ cho Lịch sử
+    };
+  }
+  if (event.moved) {
+    // Nếu chỉ ĐẢO VỊ TRÍ TRONG CÙNG 1 CỘT: Lưu vị trí âm thầm, không hiện hộp thoại
+    saveColumnOrder(columnId);
   }
 };
 
+// 🟢 3. Khi bấm "Xác nhận chuyển cột"
 const confirmTaskMove = async () => {
   if (!pendingMove.value) return;
-  const { task, newStatus } = pendingMove.value;
+  const { task, newStatus, oldStatus } = pendingMove.value;
   try {
-    // 1. Cập nhật local để mở Modal chi tiết nó hiện đúng cột
     task.status = newStatus; 
-    
-    // 2. Lưu xuống Database
+    const currentUserId = localStorage.getItem("userId") || 1; 
+
+    // Gửi API cập nhật cột (gửi kèm Trạng thái cũ để ghi Log)
     await fetch("http://localhost:8080/api/tasks/update-status", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId: task.id, status: newStatus })
+      method: "POST", headers: { "Content-Type": "application/json", "User-ID": currentUserId },
+      body: JSON.stringify({ taskId: task.id, status: newStatus, oldStatus: oldStatus })
     });
-    fetchTasks();
+
+    // 🟢 GỌI HÀM LƯU THỨ TỰ CHO CỘT MỚI ĐỂ NÓ NẰM IM ĐÓ
+    await saveColumnOrder(newStatus);
+    
     addToast("Chuyển trạng thái thành công!", "success");
-  } catch (error) { fetchTasks(); }
-  pendingMove.value = null; // Đóng modal
+  } catch (error) {}
+  pendingMove.value = null; 
 };
 
+// 🟢 4. Khi bấm "Hủy"
 const cancelTaskMove = () => {
-  pendingMove.value = null; // Đóng modal
-  fetchTasks(); // Ép load lại dữ liệu để thẻ tự văng về cột cũ
+  pendingMove.value = null; 
+  fetchTasks(); // Tải lại Data để văng về chỗ cũ
 };
 
 const openTaskModal = (columnId) => { columnForNewTask.value = columnId; showTaskModal.value = true; };

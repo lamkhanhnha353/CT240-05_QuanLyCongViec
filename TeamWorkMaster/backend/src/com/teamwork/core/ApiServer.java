@@ -29,19 +29,23 @@ public class ApiServer {
         server.createContext("/api/projects/update", this::handleUpdate);
         server.createContext("/api/projects/delete", this::handleDelete);
         server.createContext("/api/projects/add-member", this::handleAddMember);
-
         server.createContext("/api/projects/members-list", this::handleProjectMembersList);
+        server.createContext("/api/projects/update-role", this::handleUpdateMemberRole);
+        server.createContext("/api/projects/remove-member", this::handleRemoveMember);
+
         server.createContext("/api/tasks/delete", this::handleTaskDelete);
         server.createContext("/api/tasks/update-details", this::handleTaskUpdateDetails);
         server.createContext("/api/tasks/list", this::handleTaskList);
         server.createContext("/api/tasks/create", this::handleTaskCreate);
         server.createContext("/api/tasks/update-status", this::handleTaskUpdateStatus);
 
+        server.createContext("/api/tasks/subtasks", new SubtasksHandler());
+        server.createContext("/api/tasks/logs", new TaskLogsHandler()); // 🟢 API MỚI: LẤY LOG
+        server.createContext("/api/tasks/update-order", this::handleTaskUpdateOrder);
+        server.createContext("/api/tasks/attachments", new TaskAttachmentsHandler());
+
         server.createContext("/api/comments", new CommentsHandler());
-
-        // --- ENDPOINT THỐNG KÊ CỦA ĐỒNG ĐỘI ---
         server.createContext("/api/statistics", new StatisticsHandler());
-
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
 
@@ -54,12 +58,8 @@ public class ApiServer {
         server.createContext("/api/users/search", this::handleSearchUsers);
         server.createContext("/api/notifications/list", this::handleGetNotifications);
         server.createContext("/api/notifications/respond", this::handleRespondInvite);
-
-
         server.createContext("/api/project-chat", new ProjectChatHandler());
         server.createContext("/api/meetings", new MeetingHandler());
-        server.createContext("/api/projects/update-role", this::handleUpdateMemberRole);
-        server.createContext("/api/projects/remove-member", this::handleRemoveMember);
 
         server.setExecutor(null);
     }
@@ -70,9 +70,114 @@ public class ApiServer {
         System.out.println(">>> TRẠNG THÁI: SẴN SÀNG KẾT NỐI VỚI VUE");
     }
 
+    private void handleCors(HttpExchange ex) {
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, User-ID");
+    }
+
+    private String extract(String json, String key) {
+        Matcher mString = Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
+        if (mString.find())
+            return mString.group(1).trim();
+
+        Matcher mNum = Pattern.compile("\"" + key + "\"\\s*:\\s*([a-zA-Z0-9\\.]+)").matcher(json);
+        if (mNum.find())
+            return mNum.group(1).trim();
+        return "";
+    }
+
+    private String extractQuery(String query, String key) {
+        if (query == null)
+            return "";
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length > 1 && pair[0].equals(key))
+                return pair[1];
+        }
+        return "";
+    }
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.sendResponseHeaders(statusCode, bytes.length);
+        OutputStream os = exchange.getResponseBody();
+        os.write(bytes);
+        os.close();
+    }
+
+    private String escapeJson(String data) {
+        if (data == null)
+            return "";
+        return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
+    }
+
     // ==========================================
-    // API THỐNG KÊ (Đã tích hợp)
+    // 🟢 CLASS MỚI: TRẢ VỀ LỊCH SỬ HOẠT ĐỘNG
     // ==========================================
+    class TaskLogsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            try {
+                if ("GET".equals(exchange.getRequestMethod())) {
+                    int taskId = Integer.parseInt(extractQuery(exchange.getRequestURI().getQuery(), "taskId"));
+                    sendResponse(exchange, 200, taskDAO.getTaskLogs(taskId));
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+            }
+        }
+    }
+
+    class SubtasksHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equals(method)) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            try {
+                if ("GET".equals(method)) {
+                    int taskId = Integer.parseInt(extractQuery(exchange.getRequestURI().getQuery(), "taskId"));
+                    sendResponse(exchange, 200, taskDAO.getSubtasks(taskId));
+                } else if ("POST".equals(method)) {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int taskId = Integer.parseInt(extract(body, "taskId"));
+                    String title = extract(body, "title");
+                    if (taskDAO.addSubtask(taskId, title))
+                        sendResponse(exchange, 200, "{\"success\":true}");
+                    else
+                        sendResponse(exchange, 400, "{\"success\":false}");
+                } else if ("PUT".equals(method)) {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int subtaskId = Integer.parseInt(extract(body, "subtaskId"));
+                    boolean isCompleted = Boolean.parseBoolean(extract(body, "isCompleted"));
+                    if (taskDAO.toggleSubtask(subtaskId, isCompleted))
+                        sendResponse(exchange, 200, "{\"success\":true}");
+                    else
+                        sendResponse(exchange, 400, "{\"success\":false}");
+                } else if ("DELETE".equals(method)) {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int subtaskId = Integer.parseInt(extract(body, "subtaskId"));
+                    if (taskDAO.deleteSubtask(subtaskId))
+                        sendResponse(exchange, 200, "{\"success\":true}");
+                    else
+                        sendResponse(exchange, 400, "{\"success\":false}");
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+            }
+        }
+    }
+
     class StatisticsHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -83,7 +188,6 @@ public class ApiServer {
             }
             try {
                 int[] stats = taskDAO.getTaskStatistics();
-                // Trả về JSON chuẩn để Vue.js dễ vẽ biểu đồ
                 String json = String.format("{\"todo\": %d, \"inProgress\": %d, \"done\": %d}", stats[0], stats[1],
                         stats[2]);
                 sendResponse(exchange, 200, json);
@@ -93,9 +197,6 @@ public class ApiServer {
         }
     }
 
-    // ==========================================
-    // API BÌNH LUẬN
-    // ==========================================
     class CommentsHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -107,28 +208,20 @@ public class ApiServer {
             }
             try {
                 if ("GET".equals(method)) {
-                    String query = exchange.getRequestURI().getQuery();
                     int taskId = 0;
-                    if (query != null && query.contains("taskId=")) {
+                    String query = exchange.getRequestURI().getQuery();
+                    if (query != null && query.contains("taskId="))
                         taskId = Integer.parseInt(query.split("taskId=")[1].split("&")[0]);
-                    }
 
                     List<Comment> list = commentDAO.getCommentsByTask(taskId);
                     StringBuilder json = new StringBuilder("[");
                     for (int i = 0; i < list.size(); i++) {
                         Comment c = list.get(i);
-
-                        // 🟢 ĐÃ CẬP NHẬT: Ghép thêm "fileUrl" vào chuỗi JSON trả về cho Frontend
                         String safeFileUrl = (c.getFileUrl() != null) ? escapeJson(c.getFileUrl()) : "";
-
                         json.append(String.format(
                                 "{\"id\":\"%s\",\"user\":\"%s\",\"content\":\"%s\",\"fileUrl\":\"%s\",\"time\":\"%s\"}",
-                                escapeJson(String.valueOf(c.getId())),
-                                escapeJson(c.getUser()),
-                                escapeJson(c.getContent()),
-                                safeFileUrl,
-                                escapeJson(c.getTime())));
-
+                                escapeJson(String.valueOf(c.getId())), escapeJson(c.getUser()),
+                                escapeJson(c.getContent()), safeFileUrl, escapeJson(c.getTime())));
                         if (i < list.size() - 1)
                             json.append(",");
                     }
@@ -139,14 +232,11 @@ public class ApiServer {
                     String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                     int taskId = Integer.parseInt(extract(requestBody, "taskId"));
                     String content = extract(requestBody, "content");
-
-                    // 🟢 ĐÃ CẬP NHẬT: Lấy link ảnh/file từ Frontend gửi lên
                     String fileUrl = extract(requestBody, "fileUrl");
 
                     String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
                     int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-                    // 🟢 ĐÃ CẬP NHẬT: Gọi hàm addComment truyền thêm fileUrl
                     if (userId > 0 && commentDAO.addComment(taskId, userId, content, fileUrl)) {
                         sendResponse(exchange, 200, "{\"success\": true}");
                     } else {
@@ -156,205 +246,8 @@ public class ApiServer {
                     sendResponse(exchange, 405, "{\"message\": \"Method Not Allowed\"}");
                 }
             } catch (Exception e) {
-                e.printStackTrace();
                 sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
             }
-        }
-    }
-
-    private void handleProjectMembersList(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        try {
-            String query = ex.getRequestURI().getQuery();
-            int projectId = 0;
-            if (query != null && query.contains("projectId=")) {
-                projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
-            }
-            sendResponse(ex, 200, new ProjectMemberDAO().getProjectMembersJson(projectId));
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleTaskDelete(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            int taskId = Integer.parseInt(extract(body, "taskId"));
-            boolean ok = taskDAO.deleteTask(taskId);
-            if (ok)
-                sendResponse(ex, 200, "{\"message\":\"Đã xóa thẻ thành công\"}");
-            else
-                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi xóa\"}");
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    // API CHỈNH SỬA CHI TIẾT CÔNG VIỆC
-    private void handleTaskUpdateDetails(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            int taskId = Integer.parseInt(extract(body, "taskId"));
-            String title = extract(body, "title");
-            String desc = extract(body, "description");
-            String priority = extract(body, "priority");
-            String deadline = extract(body, "deadline");
-
-            // Lấy thêm 3 biến mới y chang lúc Create
-            String startDate = extract(body, "startDate");
-            String tags = extract(body, "tags");
-            String assigneeIdsStr = extract(body, "assigneeIds"); // Chuỗi "1,2,3"
-
-            // Gọi hàm DAO mới đã cập nhật
-            boolean ok = taskDAO.updateTaskDetails(taskId, title, desc, priority, deadline, startDate, tags,
-                    assigneeIdsStr);
-
-            if (ok)
-                sendResponse(ex, 200, "{\"message\":\"Cập nhật thành công\"}");
-            else
-                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleTaskList(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        try {
-            String query = ex.getRequestURI().getQuery();
-            int projectId = 0;
-            if (query != null && query.contains("projectId="))
-                projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
-            sendResponse(ex, 200, taskDAO.getTasksByProject(projectId));
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleTaskCreate(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            int projectId = Integer.parseInt(extract(body, "projectId"));
-            String title = extract(body, "title");
-            String desc = extract(body, "description");
-            String priority = extract(body, "priority");
-            if (priority.isEmpty())
-                priority = "MEDIUM";
-            String deadline = extract(body, "deadline");
-            String startDate = extract(body, "startDate");
-            String tags = extract(body, "tags");
-            String status = extract(body, "targetColumn");
-            if (status.isEmpty())
-                status = "TODO";
-
-            // 🟢 HỨNG CHUỖI ID NGƯỜI DÙNG: "1,2,3" 🟢
-            String assigneeIdsStr = extract(body, "assigneeIds");
-
-            // Truyền thẳng chuỗi assigneeIdsStr vào DAO
-            boolean ok = taskDAO.createTask(projectId, title, desc, priority, deadline, startDate, tags, status,
-                    assigneeIdsStr);
-
-            if (ok)
-                sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
-            else
-                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại do lỗi CSDL\"}");
-        } catch (Exception e) {
-            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleTaskUpdateStatus(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            int taskId = Integer.parseInt(extract(body, "taskId"));
-            String status = extract(body, "status");
-
-            boolean ok = taskDAO.updateTaskStatus(taskId, status);
-            if (ok)
-                sendResponse(ex, 200, "{\"message\":\"Cập nhật vị trí thành công\"}");
-            else
-                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleList(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        try {
-            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
-            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
-            sendResponse(ex, 200, new ProjectDAO().getAllProjectsJson(currentUserId));
-        } catch (Exception e) {
-            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
-        }
-    }
-
-    private void handleCreate(HttpExchange ex) throws IOException {
-        handleCors(ex);
-        if ("OPTIONS".equals(ex.getRequestMethod())) {
-            ex.sendResponseHeaders(204, -1);
-            return;
-        }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            String name = extract(body, "name");
-            String desc = extract(body, "desc");
-            if (desc.isEmpty())
-                desc = extract(body, "description");
-            String start = extract(body, "startDate");
-            String end = extract(body, "endDate");
-            String priority = extract(body, "priority");
-            if (priority.isEmpty())
-                priority = "MEDIUM";
-
-            int userId = Integer.parseInt(extract(body, "userId"));
-
-            int pid = new ProjectDAO().createProject(name, desc, start, end, priority, userId);
-            if (pid != -1) {
-                new StatusDAO().createDefaultStatus(pid);
-                new ProjectMemberDAO().addOrUpdateMember(pid, userId, "OWNER");
-                new ActivityLogDAO().log(pid, userId, "Đã khởi tạo dự án: " + name);
-                sendResponse(ex, 201, "{\"message\":\"Tạo thành công\"}");
-            } else {
-                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại\"}");
-            }
-        } catch (Exception e) {
-            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 
@@ -369,20 +262,15 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = extract(body, "username");
-                    String password = extract(body, "password");
-                    String loginResult = userDAO.login(username, password);
-
-                    if ("BANNED".equals(loginResult)) {
+                    String loginResult = userDAO.login(extract(body, "username"), extract(body, "password"));
+                    if ("BANNED".equals(loginResult))
                         sendResponse(exchange, 403, "{\"success\": false, \"message\": \"Tài khoản bị khóa!\"}");
-                    } else if (loginResult != null) {
+                    else if (loginResult != null) {
                         String[] parts = loginResult.split("-", 3);
-                        sendResponse(exchange, 200,
-                                "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \"" + parts[1]
-                                        + "\", \"fullName\": \"" + escapeJson(parts[2]) + "\"}");
-                    } else {
+                        sendResponse(exchange, 200, "{\"success\": true, \"userId\": " + parts[0] + ", \"role\": \""
+                                + parts[1] + "\", \"fullName\": \"" + escapeJson(parts[2]) + "\"}");
+                    } else
                         sendResponse(exchange, 401, "{\"success\": false, \"message\": \"Sai tài khoản/mật khẩu\"}");
-                    }
                 } catch (Exception e) {
                     sendResponse(exchange, 400, "{\"success\": false}");
                 }
@@ -399,15 +287,10 @@ public class ApiServer {
                 return;
             }
             if ("POST".equals(exchange.getRequestMethod())) {
-                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = extract(requestBody, "username");
-                    String password = extract(requestBody, "password");
-                    String fullName = extract(requestBody, "fullName");
-                    String email = extract(requestBody, "email");
-
-                    boolean isSuccess = userDAO.register(username, password, fullName, email);
-                    if (isSuccess)
+                    if (userDAO.register(extract(body, "username"), extract(body, "password"),
+                            extract(body, "fullName"), extract(body, "email")))
                         sendResponse(exchange, 200, "{\"success\": true}");
                     else
                         sendResponse(exchange, 400,
@@ -443,12 +326,8 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    String username = extract(reqBody, "username");
-                    String fullname = extract(reqBody, "fullname");
-                    String email = extract(reqBody, "email");
-                    String password = extract(reqBody, "password");
-
-                    int result = userDAO.addUserByAdmin(username, password, fullname, email);
+                    int result = userDAO.addUserByAdmin(extract(reqBody, "username"), extract(reqBody, "password"),
+                            extract(reqBody, "fullname"), extract(reqBody, "email"));
                     if (result == 1)
                         sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Tạo tài khoản thành công!\"}");
                     else if (result == -1)
@@ -477,12 +356,8 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    int id = Integer.parseInt(extract(reqBody, "id"));
-                    String fullname = extract(reqBody, "fullname");
-                    String email = extract(reqBody, "email");
-                    String password = extract(reqBody, "password");
-
-                    int result = userDAO.updateUser(id, fullname, email, password);
+                    int result = userDAO.updateUser(Integer.parseInt(extract(reqBody, "id")),
+                            extract(reqBody, "fullname"), extract(reqBody, "email"), extract(reqBody, "password"));
                     if (result == 1)
                         sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Cập nhật thành công!\"}");
                     else if (result == -2)
@@ -508,9 +383,7 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    int id = Integer.parseInt(extract(reqBody, "id"));
-                    boolean isDeleted = userDAO.deleteUser(id);
-                    if (isDeleted)
+                    if (userDAO.deleteUser(Integer.parseInt(extract(reqBody, "id"))))
                         sendResponse(exchange, 200, "{\"success\": true}");
                     else
                         sendResponse(exchange, 500,
@@ -533,9 +406,7 @@ public class ApiServer {
             if ("POST".equals(exchange.getRequestMethod())) {
                 String reqBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 try {
-                    int id = Integer.parseInt(extract(reqBody, "id"));
-                    boolean isSuccess = userDAO.toggleUserLock(id);
-                    if (isSuccess)
+                    if (userDAO.toggleUserLock(Integer.parseInt(extract(reqBody, "id"))))
                         sendResponse(exchange, 200, "{\"success\": true}");
                     else
                         sendResponse(exchange, 500, "{\"success\": false, \"message\": \"Lỗi cập nhật trạng thái!\"}");
@@ -546,12 +417,6 @@ public class ApiServer {
         }
     }
 
-    // ==========================================
-    // API CHAT TỔNG DỰ ÁN (CÓ HỖ TRỢ FILE)
-    // ==========================================
-    // ==========================================
-    // API CHAT TỔNG DỰ ÁN (CÓ HỖ TRỢ FILE & XÓA)
-    // ==========================================
     class ProjectChatHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -565,63 +430,47 @@ public class ApiServer {
             ProjectChatDAO chatDAO = new ProjectChatDAO();
             try {
                 if ("GET".equals(method)) {
-                    String query = exchange.getRequestURI().getQuery();
                     int projectId = 0;
-                    if (query != null && query.contains("projectId=")) {
+                    String query = exchange.getRequestURI().getQuery();
+                    if (query != null && query.contains("projectId="))
                         projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
-                    }
                     sendResponse(exchange, 200, chatDAO.getMessages(projectId));
 
                 } else if ("POST".equals(method)) {
-                    String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
-                    int projectId = Integer.parseInt(extract(requestBody, "projectId"));
-                    String content = extract(requestBody, "content");
-                    String fileUrl = extract(requestBody, "fileUrl");
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int projectId = Integer.parseInt(extract(body, "projectId"));
+                    String content = extract(body, "content");
+                    String fileUrl = extract(body, "fileUrl");
 
                     String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
                     int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-                    if (userId > 0 && chatDAO.addMessage(projectId, userId, content, fileUrl)) {
+                    if (userId > 0 && chatDAO.addMessage(projectId, userId, content, fileUrl))
                         sendResponse(exchange, 200, "{\"success\": true}");
-                    } else {
+                    else
                         sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Lỗi thêm tin nhắn\"}");
-                    }
 
-                }
-                // 🟢 THÊM ĐOẠN NÀY ĐỂ XỬ LÝ LỆNH THU HỒI TIN NHẮN 🟢
-                else if ("DELETE".equals(method)) {
-                    String query = exchange.getRequestURI().getQuery();
+                } else if ("DELETE".equals(method)) {
                     int messageId = 0;
-                    if (query != null && query.contains("messageId=")) {
+                    String query = exchange.getRequestURI().getQuery();
+                    if (query != null && query.contains("messageId="))
                         messageId = Integer.parseInt(query.split("messageId=")[1].split("&")[0]);
-                    }
 
                     String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
                     int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
-                    if (userId > 0 && chatDAO.deleteMessage(messageId, userId)) {
+                    if (userId > 0 && chatDAO.deleteMessage(messageId, userId))
                         sendResponse(exchange, 200, "{\"success\": true}");
-                    } else {
+                    else
                         sendResponse(exchange, 400,
                                 "{\"success\": false, \"message\": \"Không thể thu hồi tin nhắn\"}");
-                    }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
                 sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
             }
         }
     }
 
-
-    // cuộc họp meeting:
-    // ==========================================
-    // API QUẢN LÝ PHÒNG HỌP & LỊCH SỬ
-    // ==========================================
-    // ==========================================
-    // API QUẢN LÝ PHÒNG HỌP & LỊCH SỬ (CÓ THÔNG BÁO)
-    // ==========================================
     class MeetingHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -637,115 +486,267 @@ public class ApiServer {
                 if ("GET".equals(method)) {
                     String query = exchange.getRequestURI().getQuery();
                     int projectId = Integer.parseInt(extractQuery(query, "projectId"));
-                    String type = extractQuery(query, "type");
-
-                    if ("current".equals(type)) {
+                    if ("current".equals(extractQuery(query, "type")))
                         sendResponse(exchange, 200, meetingDAO.getCurrentMeeting(projectId));
-                    } else {
+                    else
                         sendResponse(exchange, 200, meetingDAO.getMeetingHistory(projectId));
-                    }
                 } else if ("POST".equals(method)) {
                     String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                     int projectId = Integer.parseInt(extract(requestBody, "projectId"));
                     String meetLink = extract(requestBody, "meetLink");
-
-                    // Lấy thêm Tên dự án và Tên người mở phòng từ Frontend gửi lên
                     String projectName = extract(requestBody, "projectName");
                     String hostName = extract(requestBody, "hostName");
-
                     int hostId = Integer.parseInt(exchange.getRequestHeaders().getFirst("User-ID"));
 
                     int newMeetingId = meetingDAO.startMeeting(projectId, hostId, meetLink);
                     if (newMeetingId > 0) {
-
-                        // 🔔 KÍCH HOẠT HỆ THỐNG THÔNG BÁO & EMAIL 🔔
                         try {
                             ResultSet members = meetingDAO.getProjectMembersForNotification(projectId);
-
-                            // 1. Nội dung thông báo trên Web (Ngắn gọn, KHÔNG CÓ LINK)
                             String notifTitle = "Họp Dự Án: " + projectName;
                             String notifContent = hostName
                                     + " vừa mở phòng họp. Mời bạn vào mục Phòng Họp Nhóm để tham gia.";
-
-                            // 2. Nội dung Email (Chi tiết, CÓ KÈM LINK GOOGLE MEET)
                             String emailSubject = "[Teamwork] Mời họp trực tuyến - Dự án: " + projectName;
                             String emailContent = "Xin chào,\n\nQuản lý " + hostName + " vừa mở phòng họp cho dự án "
-                                    + projectName + ".\n\n"
-                                    + "👉 Vui lòng click vào đường link sau để tham gia ngay: " + meetLink + "\n\n"
-                                    + "Trân trọng,\nHệ thống Teamwork Master";
+                                    + projectName + ".\n\n👉 Vui lòng click vào đường link sau để tham gia ngay: "
+                                    + meetLink + "\n\nTrân trọng,\nHệ thống Teamwork Master";
 
                             NotificationDAO notifDAO = new NotificationDAO();
-
                             while (members.next()) {
                                 int memberId = members.getInt("ID");
-                                String memberEmail = members.getString("Email"); // Lấy email từ DB
-
-                                if (memberId != hostId) { // Không tự gửi cho chính mình
-
-                                    // A. Bắn thông báo lên Chuông (Nhanh, đồng bộ)
+                                String memberEmail = members.getString("Email");
+                                if (memberId != hostId) {
                                     notifDAO.addNotification(memberId, projectId, notifTitle, notifContent);
-
-                                    // B. Bắn Email qua SendGrid (Tạo một luồng chạy ngầm để không bị lag web)
                                     new Thread(() -> {
-                                        com.teamwork.plugins.EmailService.sendEmail(memberEmail, emailSubject,
-                                                emailContent);
+                                        try {
+                                            com.teamwork.plugins.EmailService.sendEmail(memberEmail, emailSubject,
+                                                    emailContent);
+                                        } catch (Exception e) {
+                                        }
                                     }).start();
-
                                 }
                             }
                         } catch (Exception e) {
-                            System.out.println("Lỗi gửi thông báo/email: " + e.getMessage());
                         }
-
                         sendResponse(exchange, 200, "{\"success\": true, \"meetingId\": " + newMeetingId + "}");
                     } else {
                         sendResponse(exchange, 400, "{\"success\": false}");
                     }
                 } else if ("PUT".equals(method)) {
                     String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                    String action = extract(requestBody, "action"); // Nhận diện hành động
+                    String action = extract(requestBody, "action");
                     int meetingId = Integer.parseInt(extract(requestBody, "meetingId"));
                     String notes = extract(requestBody, "notes");
 
                     boolean success = false;
-
-                    // Nếu là hành động "Kết thúc họp"
-                    if ("end".equals(action)) {
+                    if ("end".equals(action))
                         success = meetingDAO.endMeeting(meetingId, notes);
-                    }
-                    // Nếu là hành động "Cập nhật lịch sử biên bản"
-                    else if ("updateNotes".equals(action)) {
+                    else if ("updateNotes".equals(action))
                         success = meetingDAO.updateMeetingNotes(meetingId, notes);
-                    }
 
-                    if (success) {
+                    if (success)
                         sendResponse(exchange, 200, "{\"success\": true}");
-                    } else {
+                    else
                         sendResponse(exchange, 400, "{\"success\": false}");
-                    }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
                 sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
             }
         }
+    }
 
-        
-
-        private String extractQuery(String query, String key) {
-            if (query == null)
-                return "";
-            for (String param : query.split("&")) {
-                String[] pair = param.split("=");
-                if (pair.length > 1 && pair[0].equals(key))
-                    return pair[1];
-            }
-            return "";
+    private void handleProjectMembersList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            sendResponse(ex, 200, new ProjectMemberDAO()
+                    .getProjectMembersJson(Integer.parseInt(extractQuery(ex.getRequestURI().getQuery(), "projectId"))));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 
-    
+    private void handleTaskDelete(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            if (taskDAO.deleteTask(Integer.parseInt(
+                    extract(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), "taskId"))))
+                sendResponse(ex, 200, "{\"message\":\"Đã xóa thẻ thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi xóa\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
 
+    // 🟢 ĐÃ CẬP NHẬT: Ghi log khi Sửa công việc
+    private void handleTaskUpdateDetails(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int taskId = Integer.parseInt(extract(body, "taskId"));
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            if (taskDAO.updateTaskDetails(taskId, extract(body, "title"), extract(body, "description"),
+                    extract(body, "priority"), extract(body, "deadline"), extract(body, "startDate"),
+                    extract(body, "tags"), extract(body, "assigneeIds"))) {
+                // Ghi Log
+                taskDAO.addTaskLog(taskId, currentUserId, "Đã cập nhật chi tiết công việc");
+                sendResponse(ex, 200, "{\"message\":\"Cập nhật thành công\"}");
+            } else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            sendResponse(ex, 200, taskDAO
+                    .getTasksByProject(Integer.parseInt(extractQuery(ex.getRequestURI().getQuery(), "projectId"))));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskCreate(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String priority = extract(body, "priority").isEmpty() ? "MEDIUM" : extract(body, "priority");
+            String status = extract(body, "targetColumn").isEmpty() ? "TODO" : extract(body, "targetColumn");
+            if (taskDAO.createTask(Integer.parseInt(extract(body, "projectId")), extract(body, "title"),
+                    extract(body, "description"), priority, extract(body, "deadline"), extract(body, "startDate"),
+                    extract(body, "tags"), status, extract(body, "assigneeIds")))
+                sendResponse(ex, 201, "{\"message\":\"Tạo công việc thành công\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại do lỗi CSDL\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // 🟢 ĐÃ CẬP NHẬT: Ghi log khi Kéo thả (Đổi trạng thái)
+    private void handleTaskUpdateStatus(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int taskId = Integer.parseInt(extract(body, "taskId"));
+            String status = extract(body, "status");
+            String oldStatus = extract(body, "oldStatus"); // 🟢 Lấy trạng thái cũ
+
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            if (taskDAO.updateTaskStatus(taskId, status)) {
+                // 🟢 Ghi Log cực kỳ chi tiết
+                String oldName = oldStatus.equals("TODO") ? "Cần làm"
+                        : oldStatus.equals("IN_PROGRESS") ? "Đang thực hiện"
+                                : oldStatus.equals("DONE") ? "Đã hoàn thành" : "Đã hủy";
+                String newName = status.equals("TODO") ? "Cần làm"
+                        : status.equals("IN_PROGRESS") ? "Đang thực hiện"
+                                : status.equals("DONE") ? "Đã hoàn thành" : "Đã hủy";
+
+                taskDAO.addTaskLog(taskId, currentUserId, "Đã chuyển thẻ từ: " + oldName + " ➡️ " + newName);
+
+                sendResponse(ex, 200, "{\"message\":\"Cập nhật vị trí thành công\"}");
+            } else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL khi cập nhật\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleTaskUpdateOrder(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String taskIdsStr = extract(body, "taskIds"); // Nhận chuỗi "15,22,9,3"
+
+            if (!taskIdsStr.isEmpty()) {
+                String[] ids = taskIdsStr.split(",");
+                for (int i = 0; i < ids.length; i++) {
+                    if (!ids[i].trim().isEmpty()) {
+                        taskDAO.updateTaskOrder(Integer.parseInt(ids[i].trim()), i); // i chính là thứ tự 0, 1, 2, 3...
+                    }
+                }
+            }
+            sendResponse(ex, 200, "{\"message\":\"Cập nhật thứ tự thành công\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleList(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            sendResponse(ex, 200, new ProjectDAO()
+                    .getAllProjectsJson((userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private void handleCreate(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            String desc = extract(body, "desc").isEmpty() ? extract(body, "description") : extract(body, "desc");
+            String priority = extract(body, "priority").isEmpty() ? "MEDIUM" : extract(body, "priority");
+            String name = extract(body, "name");
+            int userId = Integer.parseInt(extract(body, "userId"));
+
+            int pid = new ProjectDAO().createProject(name, desc, extract(body, "startDate"), extract(body, "endDate"),
+                    priority, userId);
+            if (pid != -1) {
+                new StatusDAO().createDefaultStatus(pid);
+                new ProjectMemberDAO().addOrUpdateMember(pid, userId, "OWNER");
+                new ActivityLogDAO().log(pid, userId, "Đã khởi tạo dự án: " + name);
+                sendResponse(ex, 201, "{\"message\":\"Tạo thành công\"}");
+            } else {
+                sendResponse(ex, 400, "{\"error\":\"Tạo thất bại\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 400, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
 
     private void handleUpdate(HttpExchange ex) throws IOException {
         handleCors(ex);
@@ -753,21 +754,9 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             int pid = Integer.parseInt(extract(body, "projectId"));
-            String priority = extract(body, "priority");
-            if (priority.isEmpty())
-                priority = "MEDIUM";
-
-            String desc = extract(body, "desc");
-            if (desc.isEmpty())
-                desc = extract(body, "description");
-
-            String name = extract(body, "name");
-            String status = extract(body, "status");
-            String endDate = extract(body, "endDate");
-
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
@@ -776,9 +765,14 @@ public class ApiServer {
                         "{\"error\":\"Truy cập bị từ chối! Chỉ Trưởng dự án hoặc Quản lý mới được sửa.\"}");
                 return;
             }
+            String priority = extract(body, "priority").isEmpty() ? "MEDIUM" : extract(body, "priority");
+            String desc = extract(body, "desc").isEmpty() ? extract(body, "description") : extract(body, "desc");
 
-            boolean ok = new ProjectDAO().updateProject(pid, name, desc, status, endDate, priority);
-            sendResponse(ex, ok ? 200 : 400, ok ? "{\"msg\":\"Xong\"}" : "{\"error\":\"Lỗi CSDL\"}");
+            if (new ProjectDAO().updateProject(pid, extract(body, "name"), desc, extract(body, "status"),
+                    extract(body, "endDate"), priority))
+                sendResponse(ex, 200, "{\"msg\":\"Xong\"}");
+            else
+                sendResponse(ex, 400, "{\"error\":\"Lỗi CSDL\"}");
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -790,9 +784,9 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
-            int pid = Integer.parseInt(extract(body, "projectId"));
+            int pid = Integer.parseInt(
+                    extract(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8), "projectId"));
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
             int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
 
@@ -800,9 +794,7 @@ public class ApiServer {
                 sendResponse(ex, 403, "{\"error\":\"Chỉ có Người tạo dự án (OWNER) mới có quyền xóa vĩnh viễn!\"}");
                 return;
             }
-
-            boolean ok = new ProjectDAO().deleteProject(pid);
-            if (ok) {
+            if (new ProjectDAO().deleteProject(pid)) {
                 com.teamwork.kernel.PluginManager.notifyProjectDeleted(pid);
                 sendResponse(ex, 200, "{\"msg\":\"Xóa xong\"}");
             } else {
@@ -819,58 +811,38 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             int projectId = Integer.parseInt(extract(body, "projectId"));
-
-            String identifier = extract(body, "identifier");
-            if (identifier.isEmpty())
-                identifier = extract(body, "email");
+            String identifier = extract(body, "identifier").isEmpty() ? extract(body, "email")
+                    : extract(body, "identifier");
             identifier = identifier.trim();
             if (identifier.startsWith("@"))
                 identifier = identifier.substring(1).trim();
 
-            String role = extract(body, "role");
-            String projectName = extract(body, "projectName");
-            String inviterName = extract(body, "inviterName");
+            String projectName = extract(body, "projectName").isEmpty() ? "Dự án #" + projectId
+                    : extract(body, "projectName");
+            String inviterName = extract(body, "inviterName").isEmpty() ? "Quản lý dự án"
+                    : extract(body, "inviterName");
 
-            if (projectName.isEmpty())
-                projectName = "Dự án #" + projectId;
-            if (inviterName.isEmpty())
-                inviterName = "Quản lý dự án";
-
-            // Gọi hàm bên DAO để xử lý DB và nhét thông báo Chuông
-            String result = new ProjectMemberDAO().inviteMember(projectId, projectName, identifier, role, inviterName);
+            String result = new ProjectMemberDAO().inviteMember(projectId, projectName, identifier,
+                    extract(body, "role"), inviterName);
 
             if ("SUCCESS".equals(result)) {
-
-                // ========================================================
-                // 🟢 THÊM LOGIC BẮN EMAIL NẾU IDENTIFIER LÀ EMAIL HỢP LỆ 🟢
-                // ========================================================
-                // Kiểm tra xem chuỗi người dùng nhập vào có dạng email không (@xxx.com)
                 if (identifier.contains("@") && identifier.contains(".")) {
-                    final String targetEmail = identifier; // Tạo biến final để nhét vào Thread
+                    final String targetEmail = identifier;
                     final String pName = projectName;
                     final String iName = inviterName;
-
                     new Thread(() -> {
                         try {
-                            String emailSubject = "[Teamwork] Lời mời tham gia dự án: " + pName;
-                            String emailContent = "Xin chào,\n\n"
-                                    + iName + " vừa mời bạn tham gia vào dự án " + pName
-                                    + " trên hệ thống Teamwork Master.\n"
-                                    + "Vui lòng đăng nhập vào hệ thống web để Đồng ý hoặc Từ chối lời mời này.\n\n"
-                                    + "Trân trọng,\nHệ thống Teamwork Master";
-
-                            com.teamwork.plugins.EmailService.sendEmail(targetEmail, emailSubject, emailContent);
-                            System.out.println(">>> Đã bắn Email Lời mời dự án cho: " + targetEmail);
+                            String emailContent = "Xin chào,\n\n" + iName + " vừa mời bạn tham gia vào dự án " + pName
+                                    + ".\nVui lòng đăng nhập vào hệ thống để Đồng ý hoặc Từ chối.\n\nTrân trọng,\nHệ thống Teamwork Master";
+                            com.teamwork.plugins.EmailService.sendEmail(targetEmail,
+                                    "[Teamwork] Lời mời tham gia dự án: " + pName, emailContent);
                         } catch (Exception e) {
-                            System.out.println("Lỗi khi gửi email mời dự án: " + e.getMessage());
                         }
                     }).start();
                 }
-                // ========================================================
-
                 sendResponse(ex, 200, "{\"message\":\"Đã gửi lời mời và Email thành công!\"}");
             } else {
                 sendResponse(ex, 400, "{\"error\":\"" + result + "\"}");
@@ -887,12 +859,9 @@ public class ApiServer {
             return;
         }
         try {
-            String query = ex.getRequestURI().getQuery();
-            String keyword = "";
-            if (query != null && query.contains("q=")) {
-                keyword = query.split("q=")[1].split("&")[0];
+            String keyword = extractQuery(ex.getRequestURI().getQuery(), "q");
+            if (!keyword.isEmpty())
                 keyword = java.net.URLDecoder.decode(keyword, StandardCharsets.UTF_8.name());
-            }
             sendResponse(ex, 200, userDAO.searchUsers(keyword));
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
@@ -907,8 +876,8 @@ public class ApiServer {
         }
         try {
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
-            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
-            sendResponse(ex, 200, new NotificationDAO().getUserNotifications(currentUserId));
+            sendResponse(ex, 200, new NotificationDAO().getUserNotifications(
+                    (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0));
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
@@ -920,17 +889,14 @@ public class ApiServer {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
-            int notifId = Integer.parseInt(extract(body, "notificationId"));
-            int projectId = Integer.parseInt(extract(body, "projectId"));
-            boolean isAccept = Boolean.parseBoolean(extract(body, "isAccept"));
-
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
-            int currentUserId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+            int notifId = Integer.parseInt(extract(body, "notificationId"));
 
-            boolean ok = new ProjectMemberDAO().respondToInvite(currentUserId, projectId, isAccept);
-            if (ok) {
+            if (new ProjectMemberDAO().respondToInvite(
+                    (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0,
+                    Integer.parseInt(extract(body, "projectId")), Boolean.parseBoolean(extract(body, "isAccept")))) {
                 new NotificationDAO().markAsRead(notifId);
                 sendResponse(ex, 200, "{\"message\":\"Đã xử lý lời mời!\"}");
             } else {
@@ -941,88 +907,84 @@ public class ApiServer {
         }
     }
 
-    private void handleCors(HttpExchange ex) {
-        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, User-ID");
-    }
-
-    private String extract(String json, String key) {
-        Matcher mString = Pattern.compile("\"" + key + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
-        if (mString.find())
-            return mString.group(1).trim();
-
-        Matcher mNum = Pattern.compile("\"" + key + "\"\\s*:\\s*([a-zA-Z0-9\\.]+)").matcher(json);
-        if (mNum.find())
-            return mNum.group(1).trim();
-
-        return "";
-    }
-
-    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
-        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-        exchange.sendResponseHeaders(statusCode, bytes.length);
-        OutputStream os = exchange.getResponseBody();
-        os.write(bytes);
-        os.close();
-    }
-
-    private String escapeJson(String data) {
-        if (data == null)
-            return "";
-        return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
-    }
-
-    // API: CẬP NHẬT QUYỀN THÀNH VIÊN
     private void handleUpdateMemberRole(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
-            int projectId = Integer.parseInt(extract(body, "projectId"));
-            int targetUserId = Integer.parseInt(extract(body, "targetUserId"));
-            String newRole = extract(body, "newRole");
-
-            // TODO: Ở hệ thống thực tế cần check quyền của người gửi request tại đây
-            boolean ok = new ProjectMemberDAO().updateRole(projectId, targetUserId, newRole);
-            if (ok) {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            if (new ProjectMemberDAO().updateRole(Integer.parseInt(extract(body, "projectId")),
+                    Integer.parseInt(extract(body, "targetUserId")), extract(body, "newRole")))
                 sendResponse(ex, 200, "{\"success\": true, \"message\": \"Đã cập nhật quyền thành công!\"}");
-            } else {
+            else
                 sendResponse(ex, 400, "{\"success\": false, \"error\": \"Lỗi khi cập nhật quyền\"}");
-            }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
-    // API: XÓA THÀNH VIÊN HOẶC RỜI DỰ ÁN
     private void handleRemoveMember(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
             ex.sendResponseHeaders(204, -1);
             return;
         }
-
-        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         try {
-            int projectId = Integer.parseInt(extract(body, "projectId"));
-            int targetUserId = Integer.parseInt(extract(body, "targetUserId"));
-
-            boolean ok = new ProjectMemberDAO().removeMember(projectId, targetUserId);
-            if (ok) {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            if (new ProjectMemberDAO().removeMember(Integer.parseInt(extract(body, "projectId")),
+                    Integer.parseInt(extract(body, "targetUserId"))))
                 sendResponse(ex, 200, "{\"success\": true, \"message\": \"Đã xóa thành viên khỏi dự án!\"}");
-            } else {
+            else
                 sendResponse(ex, 400, "{\"success\": false, \"error\": \"Lỗi khi xóa thành viên\"}");
-            }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
-    
+    // ==========================================
+    // 🟢 CLASS MỚI: API TÀI LIỆU ĐÍNH KÈM
+    // ==========================================
+    class TaskAttachmentsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equals(method)) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            try {
+                if ("GET".equals(method)) {
+                    int taskId = Integer.parseInt(extractQuery(exchange.getRequestURI().getQuery(), "taskId"));
+                    sendResponse(exchange, 200, taskDAO.getTaskAttachments(taskId));
+                } else if ("POST".equals(method)) {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int taskId = Integer.parseInt(extract(body, "taskId"));
+                    String fileName = extract(body, "fileName");
+                    String fileUrl = extract(body, "fileUrl");
+
+                    String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
+                    int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+                    if (taskDAO.addTaskAttachment(taskId, userId, fileName, fileUrl)) {
+                        // Ghi Log lịch sử
+                        taskDAO.addTaskLog(taskId, userId, "Đã đính kèm tài liệu: " + fileName);
+                        sendResponse(exchange, 200, "{\"success\":true}");
+                    } else
+                        sendResponse(exchange, 400, "{\"success\":false}");
+                } else if ("DELETE".equals(method)) {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    int attachmentId = Integer.parseInt(extract(body, "attachmentId"));
+                    if (taskDAO.deleteTaskAttachment(attachmentId))
+                        sendResponse(exchange, 200, "{\"success\":true}");
+                    else
+                        sendResponse(exchange, 400, "{\"success\":false}");
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+            }
+        }
+    }
 }

@@ -16,7 +16,7 @@ public class TaskDAO {
                 "LEFT JOIN TBL_USERS u ON ta.UserID = u.ID " +
                 "WHERE t.ProjectID = ? " +
                 "GROUP BY t.ID " +
-                "ORDER BY t.CreatedAt DESC";
+                "ORDER BY t.OrderIndex ASC, t.CreatedAt DESC";
 
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -226,11 +226,180 @@ public class TaskDAO {
         return stats;
     }
 
+    // ==========================================
+    // 🟢 CÁC HÀM XỬ LÝ CHECKLIST (SUBTASKS) 🟢
+    // ==========================================
+
+    public String getSubtasks(int taskId) {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT * FROM TBL_SUBTASKS WHERE TaskID = ? ORDER BY ID ASC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+                json.append(String.format("{\"id\":%d,\"title\":\"%s\",\"isCompleted\":%b}",
+                        rs.getInt("ID"), escapeJson(rs.getString("Title")), rs.getBoolean("IsCompleted")));
+                first = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
+    }
+
+    public boolean addSubtask(int taskId, String title) {
+        String sql = "INSERT INTO TBL_SUBTASKS (TaskID, Title, IsCompleted) VALUES (?, ?, FALSE)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            pstmt.setString(2, title);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean toggleSubtask(int subtaskId, boolean isCompleted) {
+        String sql = "UPDATE TBL_SUBTASKS SET IsCompleted = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setBoolean(1, isCompleted);
+            pstmt.setInt(2, subtaskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteSubtask(int subtaskId) {
+        String sql = "DELETE FROM TBL_SUBTASKS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, subtaskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 🟢 HÀM XỬ LÝ LỊCH SỬ HOẠT ĐỘNG (TASK LOGS) 🟢
+    // ==========================================
+    public boolean addTaskLog(int taskId, int userId, String action) {
+        String sql = "INSERT INTO TBL_TASK_LOGS (TaskID, UserID, Action) VALUES (?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            pstmt.setInt(2, userId);
+            pstmt.setString(3, action);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    public String getTaskLogs(int taskId) {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT l.*, u.FullName FROM TBL_TASK_LOGS l LEFT JOIN TBL_USERS u ON l.UserID = u.ID WHERE l.TaskID = ? ORDER BY l.CreatedAt DESC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+                String user = rs.getString("FullName");
+                if (user == null)
+                    user = "Hệ thống";
+                json.append(String.format("{\"id\":%d,\"user\":\"%s\",\"action\":\"%s\",\"time\":\"%s\"}",
+                        rs.getInt("ID"), escapeJson(user), escapeJson(rs.getString("Action")),
+                        rs.getTimestamp("CreatedAt").toString()));
+                first = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
+    }
+
+    public boolean updateTaskOrder(int taskId, int orderIndex) {
+        String sql = "UPDATE TBL_TASKS SET OrderIndex = ? WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, orderIndex);
+            pstmt.setInt(2, taskId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 🟢 HÀM XỬ LÝ TÀI LIỆU ĐÍNH KÈM (ATTACHMENTS) 🟢
+    // ==========================================
+    public String getTaskAttachments(int taskId) {
+        StringBuilder json = new StringBuilder("[");
+        String sql = "SELECT a.*, u.FullName FROM TBL_TASK_ATTACHMENTS a LEFT JOIN TBL_USERS u ON a.UserID = u.ID WHERE a.TaskID = ? ORDER BY a.CreatedAt DESC";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+                String user = rs.getString("FullName");
+                json.append(String.format(
+                        "{\"id\":%d,\"fileName\":\"%s\",\"fileUrl\":\"%s\",\"user\":\"%s\",\"time\":\"%s\"}",
+                        rs.getInt("ID"), escapeJson(rs.getString("FileName")), escapeJson(rs.getString("FileUrl")),
+                        escapeJson(user), rs.getTimestamp("CreatedAt").toString()));
+                first = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
+    }
+
+    public boolean addTaskAttachment(int taskId, int userId, String fileName, String fileUrl) {
+        String sql = "INSERT INTO TBL_TASK_ATTACHMENTS (TaskID, UserID, FileName, FileUrl) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, taskId);
+            pstmt.setInt(2, userId);
+            pstmt.setString(3, fileName);
+            pstmt.setString(4, fileUrl);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    public boolean deleteTaskAttachment(int attachmentId) {
+        String sql = "DELETE FROM TBL_TASK_ATTACHMENTS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, attachmentId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     private String escapeJson(String data) {
         if (data == null)
             return "";
         return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
     }
+
 
     
 }
