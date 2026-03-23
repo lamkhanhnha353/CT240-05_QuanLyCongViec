@@ -202,23 +202,25 @@ public class TaskDAO {
     }
 
     // 🟢 KHÔNG ĐỔI
-    public int[] getTaskStatistics() {
-        int[] stats = new int[3];
-        String sql = "SELECT Status, COUNT(*) as total FROM TBL_TASKS GROUP BY Status";
+    // Lấy thống kê công việc CỦA RIÊNG 1 DỰ ÁN
+    public int[] getTaskStatistics(int projectId) {
+        int[] stats = new int[3]; // Vị trí 0: TODO, 1: IN_PROGRESS, 2: DONE
+        String sql = "SELECT Status, COUNT(*) as Count FROM TBL_TASKS WHERE ProjectID = ? GROUP BY Status";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, projectId); // 🟢 Lọc theo Dự án
+            ResultSet rs = pstmt.executeQuery();
+
             while (rs.next()) {
                 String status = rs.getString("Status");
-                int count = rs.getInt("total");
-                if (status != null) {
-                    if (status.equals("TODO"))
-                        stats[0] += count;
-                    else if (status.equals("IN_PROGRESS"))
-                        stats[1] += count;
-                    else if (status.equals("DONE"))
-                        stats[2] += count;
-                }
+                int count = rs.getInt("Count");
+                if ("TODO".equals(status))
+                    stats[0] = count;
+                else if ("IN_PROGRESS".equals(status))
+                    stats[1] = count;
+                else if ("DONE".equals(status))
+                    stats[2] = count;
             }
         } catch (SQLException e) {
             e.printStackTrace();

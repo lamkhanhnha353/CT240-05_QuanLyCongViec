@@ -187,7 +187,14 @@ public class ApiServer {
                 return;
             }
             try {
-                int[] stats = taskDAO.getTaskStatistics();
+                // 🟢 Lấy projectId từ thanh địa chỉ: /api/statistics?projectId=X
+                int projectId = 0;
+                String query = exchange.getRequestURI().getQuery();
+                if (query != null && query.contains("projectId=")) {
+                    projectId = Integer.parseInt(query.split("projectId=")[1].split("&")[0]);
+                }
+
+                int[] stats = taskDAO.getTaskStatistics(projectId); // 🟢 Truyền projectId vào DAO
                 String json = String.format("{\"todo\": %d, \"inProgress\": %d, \"done\": %d}", stats[0], stats[1],
                         stats[2]);
                 sendResponse(exchange, 200, json);

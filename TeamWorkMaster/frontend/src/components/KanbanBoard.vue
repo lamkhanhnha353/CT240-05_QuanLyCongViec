@@ -1,57 +1,39 @@
 <template>
   <div class="flex flex-col w-full h-full relative min-h-0">
     
-    <div class="flex flex-col px-6 pt-4 pb-2 shrink-0 gap-3 border-b border-slate-100 dark:border-slate-800">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div class="relative flex-1 w-full max-w-md">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
-          <input v-model="searchQuery" type="text" placeholder="Tìm tên công việc..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
-        </div>
-
-        <div class="flex items-center space-x-3 shrink-0">
-          <button @click="openTaskModal('TODO')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all flex items-center hover:-translate-y-0.5">
-            <span class="mr-2 text-lg leading-none">+</span> Thêm công việc
-          </button>
-
-          <div class="bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-xl flex space-x-1 shadow-inner border border-slate-300/50 dark:border-slate-700/50">
-            <button @click="viewMode = 'board'" :class="viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Kanban">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            </button>
-            <button @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Danh Sách">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
-            <button @click="viewMode = 'calendar'" :class="viewMode === 'calendar' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2.5 rounded-lg transition-all" title="Dạng Lịch (Calendar)">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            </button>
-          </div>
-        </div>
+    <div class="flex px-6 py-4 shrink-0 justify-between items-center gap-4 border-b border-slate-100 dark:border-slate-800">
+      
+      <div class="relative flex-1 w-full max-w-md">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
+        <input v-model="searchQuery" type="text" placeholder="Tìm tên công việc..." class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
+        
+        <button @click="startVoiceSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center transition-colors focus:outline-none" :class="isListening ? 'text-red-500 animate-pulse' : 'text-slate-400 hover:text-blue-500'" title="Tìm kiếm bằng giọng nói">
+          <svg v-if="!isListening" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+          <span v-else class="text-xl">🎙️</span>
+        </button>
       </div>
 
-      <div class="flex flex-wrap gap-3 pb-1">
-        <div class="relative w-40 shrink-0">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🏷️</span>
-          <input v-model="searchTag" type="text" placeholder="Lọc nhãn..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all" />
-        </div>
-        <div class="relative shrink-0">
-          <select v-model="searchAssignee" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer">
-            <option value="">👤 Mọi thành viên</option>
-            <option value="unassigned">👻 Chưa phân công</option>
-            <option v-for="user in projectMembers" :key="user.id" :value="user.id">{{ user.fullName }}</option>
-          </select>
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">👥</span>
-        </div>
-        <div class="relative shrink-0">
-          <select v-model="searchDeadline" class="pl-9 pr-8 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer" :class="searchDeadline === 'overdue' ? 'text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : ''">
-            <option value="">⏳ Mọi thời hạn</option>
-            <option value="overdue">🔴 Đã trễ hạn</option>
-            <option value="today">🟡 Tới hạn hôm nay</option>
-            <option value="week">🔵 Trong 7 ngày tới</option>
-          </select>
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">📅</span>
-        </div>
-        <button v-if="searchQuery || searchTag || searchAssignee || searchDeadline" @click="clearFilters" class="text-xs font-bold text-slate-500 hover:text-red-500 underline flex items-center px-2">
-          Xóa lọc ✕
+      <div class="flex items-center space-x-3 shrink-0">
+        
+        <button @click="openTaskModal('TODO')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all flex items-center hover:-translate-y-0.5 hidden sm:flex">
+          <span class="mr-2 text-lg leading-none">+</span> Thêm công việc
         </button>
+        <button @click="openTaskModal('TODO')" class="p-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-md sm:hidden flex items-center justify-center">
+          <span class="text-lg leading-none">+</span>
+        </button>
+
+        <div class="bg-slate-200/70 dark:bg-slate-800/70 p-1.5 rounded-xl flex space-x-1 shadow-inner border border-slate-300/50 dark:border-slate-700/50 hidden md:flex">
+          <button @click="viewMode = 'board'" :class="viewMode === 'board' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2 rounded-lg transition-all" title="Dạng Kanban"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
+          <button @click="viewMode = 'table'" :class="viewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2 rounded-lg transition-all" title="Dạng Danh Sách"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+          <button @click="viewMode = 'calendar'" :class="viewMode === 'calendar' ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-300/50 dark:hover:bg-slate-700/50'" class="p-2 rounded-lg transition-all" title="Dạng Lịch (Calendar)"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></button>
+        </div>
+
+        <button @click="showFilters = true" class="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 shadow-sm transition-all flex items-center hover:-translate-y-0.5" title="Lọc & Sắp xếp">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+          <span class="hidden md:block ml-2 text-sm font-bold">Lọc / Sắp xếp</span>
+          <span v-if="activeFilterCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm border-2 border-white dark:border-slate-900">{{ activeFilterCount }}</span>
+        </button>
+
       </div>
     </div>
 
@@ -69,7 +51,17 @@
           <draggable v-model="boardTasks[column.id]" group="tasks" item-key="id" @change="onTaskMoved($event, column.id)" class="flex-1 min-h-[100px] space-y-3" ghost-class="opacity-40" drag-class="cursor-grabbing" :animation="200">
             <template #item="{ element }">
               <div v-show="matchFilter(element)" @click="openEditModal(element)" class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group" :class="getPriorityBorder(element.priority)">
-                <div class="flex justify-between items-start mb-2"><span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md" :class="getPriorityTag(element.priority)">{{ formatPriority(element.priority) }}</span></div>
+                
+                <div class="flex justify-between items-start mb-2">
+                  <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md shadow-sm" :class="getPriorityTag(element.priority)">{{ formatPriority(element.priority) }}</span>
+                  <span v-if="getDeadlineBadge(element.deadline, element.status)" 
+                        class="text-[9px] font-black tracking-wider px-2 py-1 rounded-md shadow-sm flex items-center" 
+                        :class="getDeadlineBadge(element.deadline, element.status).class">
+                    <span class="mr-1 text-xs">{{ getDeadlineBadge(element.deadline, element.status).icon }}</span>
+                    {{ getDeadlineBadge(element.deadline, element.status).text }}
+                  </span>
+                </div>
+                
                 <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1 leading-snug pr-2" :class="column.id === 'CANCEL' ? 'line-through opacity-70' : ''">{{ element.title }}</h4>
                 <div v-if="element.tags" class="flex flex-wrap gap-1.5 mb-2 mt-1">
                   <span v-for="(tag, idx) in getTagsArray(element.tags)" :key="idx" class="px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shadow-sm" :class="getTagColor(tag)">{{ tag }}</span>
@@ -225,6 +217,82 @@
       </div>
     </div>
 
+    <div v-if="showFilters" @click="showFilters = false" class="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-sm z-40 transition-opacity"></div>
+    <aside :class="showFilters ? 'translate-x-0' : 'translate-x-full'" class="fixed top-0 right-0 w-80 lg:w-[400px] h-screen bg-white dark:bg-slate-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 flex flex-col">
+      
+      <div class="h-16 px-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-800/50">
+        <h3 class="font-black text-slate-800 dark:text-white flex items-center">
+          <span class="text-xl mr-2">🎛️</span> Lọc & Sắp Xếp
+        </h3>
+        <button @click="showFilters = false" class="p-2 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-white transition-colors outline-none">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+        
+        <div>
+          <label class="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Sắp xếp công việc</label>
+          <div class="flex items-center space-x-2">
+            <div class="relative flex-1">
+              <select v-model="sortBy" @change="applySort" class="w-full pl-9 pr-8 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer text-blue-600 dark:text-blue-400">
+                <option value="">↕️ Mặc định</option>
+                <option value="deadline">📅 Theo Hạn chót</option>
+                <option value="priority">🔥 Theo Độ ưu tiên</option>
+                <option value="name">🔤 Theo Tên (A-Z)</option>
+              </select>
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-80">↕️</span>
+            </div>
+            <button v-if="sortBy" @click="toggleSortOrder" class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors focus:outline-none shadow-sm font-bold text-slate-600 dark:text-slate-300" :title="sortDesc ? 'Đang xếp Giảm dần' : 'Đang xếp Tăng dần'">
+               {{ sortDesc ? '⬇️ Giảm' : '⬆️ Tăng' }}
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-slate-100 dark:border-slate-700" />
+
+        <div class="space-y-5">
+          <label class="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Lọc kết quả</label>
+          
+          <div>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🏷️</span>
+              <input v-model="searchTag" type="text" placeholder="Nhập tên nhãn (VD: giao diện)..." class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 dark:text-slate-300 transition-all shadow-sm" />
+            </div>
+          </div>
+
+          <div>
+            <div class="relative">
+              <select v-model="searchAssignee" class="w-full pl-10 pr-8 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer shadow-sm">
+                <option value="">👤 Mọi thành viên</option>
+                <option value="unassigned">👻 Chưa phân công</option>
+                <option v-for="user in projectMembers" :key="user.id" :value="user.id">{{ user.fullName }}</option>
+              </select>
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">👥</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="relative">
+              <select v-model="searchDeadline" class="w-full pl-10 pr-8 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 dark:text-slate-300 transition-all appearance-none cursor-pointer shadow-sm" :class="searchDeadline === 'overdue' ? 'text-red-500 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' : ''">
+                <option value="">⏳ Mọi thời hạn</option>
+                <option value="overdue">🔴 Đã trễ hạn</option>
+                <option value="today">🟡 Tới hạn hôm nay</option>
+                <option value="week">🔵 Trong 7 ngày tới</option>
+              </select>
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-60">📅</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+        <button @click="clearFilters" class="w-full py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex justify-center items-center shadow-sm">
+          <span class="mr-2">🗑️</span> Xóa tất cả Lọc & Sắp xếp
+        </button>
+      </div>
+    </aside>
+
     <div v-if="pendingMove" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-8 text-center animate-fade-in border border-slate-200 dark:border-slate-700">
         <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center rounded-full mx-auto mb-5 text-3xl shadow-inner">📦</div>
@@ -258,6 +326,21 @@ const searchTag = ref("");
 const searchAssignee = ref("");
 const searchDeadline = ref(""); 
 
+// 🟢 BIẾN CHO PANEL TRƯỢT & SẮP XẾP & GIỌNG NÓI 🟢
+const showFilters = ref(false);
+const sortBy = ref("");
+const sortDesc = ref(false);
+const isListening = ref(false);
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (searchTag.value) count++;
+  if (searchAssignee.value) count++;
+  if (searchDeadline.value) count++;
+  if (sortBy.value) count++;
+  return count;
+});
+
 const kanbanColumns = ref([
   { id: 'TODO', title: 'Cần làm', colorClass: 'bg-slate-400' },
   { id: 'IN_PROGRESS', title: 'Đang thực hiện', colorClass: 'bg-blue-500' },
@@ -267,7 +350,39 @@ const kanbanColumns = ref([
 
 const boardTasks = ref({ 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] });
 
-const clearFilters = () => { searchQuery.value = ""; searchTag.value = ""; searchAssignee.value = ""; searchDeadline.value = ""; };
+// 🟢 LOGIC TÌM KIẾM GIỌNG NÓI (NATIVE CHROME API) 🟢
+const startVoiceSearch = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    addToast("Trình duyệt của bạn không hỗ trợ tìm kiếm giọng nói. Hãy dùng Chrome!", "warning");
+    return;
+  }
+  
+  if (isListening.value) return; 
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'vi-VN';
+  recognition.interimResults = false; 
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => { isListening.value = true; };
+  
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    searchQuery.value = transcript.replace(/[.,!?]$/, '').trim();
+  };
+  
+  recognition.onerror = (event) => { console.error("Lỗi giọng nói: ", event.error); isListening.value = false; };
+  recognition.onend = () => { isListening.value = false; };
+  
+  recognition.start();
+};
+
+const clearFilters = () => { 
+  searchQuery.value = ""; searchTag.value = ""; searchAssignee.value = ""; searchDeadline.value = ""; 
+  sortBy.value = ""; sortDesc.value = false; applySort(); 
+  showFilters.value = false; // Đóng panel sau khi xóa
+};
 
 const matchFilter = (task) => {
   let matchName = true, matchTag = true, matchAssignee = true, matchDeadline = true;
@@ -292,6 +407,37 @@ const matchFilter = (task) => {
   return matchName && matchTag && matchAssignee && matchDeadline;
 };
 
+// 🟢 LOGIC SẮP XẾP TOÀN CỤC 🟢
+const applySort = () => {
+  if (!sortBy.value) { fetchTasks(); return; }
+
+  const priorityMap = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, null: 0, undefined: 0 };
+
+  const sortFunc = (a, b) => {
+    let valA, valB;
+    if (sortBy.value === 'deadline') {
+      valA = (!a.deadline || a.deadline === 'null') ? Infinity : new Date(a.deadline).getTime();
+      valB = (!b.deadline || b.deadline === 'null') ? Infinity : new Date(b.deadline).getTime();
+    } else if (sortBy.value === 'priority') {
+      valA = priorityMap[a.priority] || 0;
+      valB = priorityMap[b.priority] || 0;
+    } else if (sortBy.value === 'name') {
+      valA = a.title.toLowerCase();
+      valB = b.title.toLowerCase();
+    }
+
+    if (valA < valB) return sortDesc.value ? 1 : -1;
+    if (valA > valB) return sortDesc.value ? -1 : 1;
+    return 0;
+  };
+
+  ['TODO', 'IN_PROGRESS', 'DONE', 'CANCEL'].forEach(col => {
+    if(boardTasks.value[col]) boardTasks.value[col].sort(sortFunc);
+  });
+};
+
+const toggleSortOrder = () => { sortDesc.value = !sortDesc.value; applySort(); };
+
 const getAssigneeArray = (namesStr) => !namesStr ? [] : namesStr.split(',').map(n => n.trim()).filter(n => n);
 const getTagsArray = (tagsStr) => !tagsStr ? [] : tagsStr.split(',').map(t => t.trim()).filter(t => t);
 const getTagColor = (tag) => {
@@ -302,7 +448,30 @@ const getTagColor = (tag) => {
 };
 
 const allTasks = computed(() => [ ...(boardTasks.value['TODO'] || []), ...(boardTasks.value['IN_PROGRESS'] || []), ...(boardTasks.value['DONE'] || []), ...(boardTasks.value['CANCEL'] || []) ]);
-const filteredAllTasks = computed(() => allTasks.value.filter(task => matchFilter(task)));
+
+const filteredAllTasks = computed(() => {
+  let filtered = allTasks.value.filter(task => matchFilter(task));
+  if (sortBy.value) {
+    const priorityMap = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, null: 0, undefined: 0 };
+    filtered.sort((a, b) => {
+      let valA, valB;
+      if (sortBy.value === 'deadline') {
+        valA = (!a.deadline || a.deadline === 'null') ? Infinity : new Date(a.deadline).getTime();
+        valB = (!b.deadline || b.deadline === 'null') ? Infinity : new Date(b.deadline).getTime();
+      } else if (sortBy.value === 'priority') {
+        valA = priorityMap[a.priority] || 0;
+        valB = priorityMap[b.priority] || 0;
+      } else if (sortBy.value === 'name') {
+        valA = a.title.toLowerCase();
+        valB = b.title.toLowerCase();
+      }
+      if (valA < valB) return sortDesc.value ? 1 : -1;
+      if (valA > valB) return sortDesc.value ? -1 : 1;
+      return 0;
+    });
+  }
+  return filtered;
+});
 
 const currentPage = ref(1);
 const itemsPerPage = ref(7); 
@@ -311,7 +480,7 @@ const paginatedTasks = computed(() => { const start = (currentPage.value - 1) * 
 const changePage = (page) => { if (page >= 1 && page <= totalPages.value) currentPage.value = page; };
 watch(filteredAllTasks, () => { if (currentPage.value > totalPages.value) currentPage.value = totalPages.value; });
 
-// 🟢 LOGIC DẠNG LỊCH (CALENDAR) 🟢
+// LOGIC DẠNG LỊCH (CALENDAR)
 const currentDate = ref(new Date());
 const currentYear = computed(() => currentDate.value.getFullYear());
 const currentMonth = computed(() => currentDate.value.getMonth());
@@ -342,7 +511,6 @@ const calendarDays = computed(() => {
   return days;
 });
 
-// 🟢 TÌM VÀ ĐÁNH DẤU THẺ LÀ BẮT ĐẦU HAY KẾT THÚC VÀO NGÀY ĐÓ 🟢
 const getTasksForDate = (date) => {
   const dString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   const tasksOnDay = [];
@@ -388,6 +556,7 @@ const fetchTasks = async () => {
         const data = await res.json();
         boardTasks.value = { 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] };
         data.forEach(task => { boardTasks.value[task.status] ? boardTasks.value[task.status].push(task) : boardTasks.value['TODO'].push(task); });
+        if (sortBy.value) applySort();
     }
   } catch (error) {}
 };
@@ -406,7 +575,7 @@ const saveColumnOrder = async (columnId) => {
 
 const onTaskMoved = (event, columnId) => {
   if (event.added) pendingMove.value = { task: event.added.element, newStatus: columnId, oldStatus: event.added.element.status };
-  if (event.moved) saveColumnOrder(columnId);
+  if (event.moved && !sortBy.value) saveColumnOrder(columnId);
 };
 
 const confirmTaskMove = async () => {
@@ -416,7 +585,7 @@ const confirmTaskMove = async () => {
     task.status = newStatus; 
     const currentUserId = localStorage.getItem("userId") || 1; 
     await fetch("http://localhost:8080/api/tasks/update-status", { method: "POST", headers: { "Content-Type": "application/json", "User-ID": currentUserId }, body: JSON.stringify({ taskId: task.id, status: newStatus, oldStatus: oldStatus }) });
-    await saveColumnOrder(newStatus);
+    if (!sortBy.value) await saveColumnOrder(newStatus);
     addToast("Chuyển trạng thái thành công!", "success");
   } catch (error) {}
   pendingMove.value = null; 
@@ -428,7 +597,23 @@ const onTaskCreated = () => { showTaskModal.value = false; addToast("Tạo công
 const openEditModal = (task) => { editTaskData.value = task; showEditModal.value = true; };
 const onTaskUpdated = () => { showEditModal.value = false; addToast("Đã cập nhật công việc!", "success"); fetchTasks(); };
 
-// 🟢 HÀM HIỂN THỊ ĐẦY ĐỦ NGÀY THÁNG NĂM TRONG BẢNG 🟢
+const getDeadlineBadge = (deadline, status) => {
+  if (!deadline || deadline === 'null') return null;
+  if (status === 'DONE' || status === 'CANCEL') return null; 
+  
+  const today = new Date(); 
+  today.setHours(0, 0, 0, 0);
+  const taskDate = new Date(deadline); 
+  taskDate.setHours(0, 0, 0, 0);
+  
+  const diffDays = Math.ceil((taskDate - today) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return { text: `Quá hạn ${Math.abs(diffDays)} ngày`, icon: '🚨', class: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800 animate-pulse' };
+  if (diffDays === 0) return { text: 'Tới hạn hôm nay', icon: '⚠️', class: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-200 dark:border-orange-800' };
+  if (diffDays <= 3) return { text: `Còn ${diffDays} ngày`, icon: '⏳', class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 border border-amber-200 dark:border-amber-800' };
+  return { text: `Còn ${diffDays} ngày`, icon: '📅', class: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600' };
+};
+
 const formatDateFull = (d) => {
   if (!d || d === 'null') return '';
   const parts = d.split('-');

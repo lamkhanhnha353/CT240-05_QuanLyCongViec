@@ -13,20 +13,17 @@
       </div>
 
       <nav class="flex-1 py-6 space-y-2 overflow-y-auto custom-scrollbar" :class="isSidebarOpen ? 'px-4' : 'px-2'">
-        <router-link to="/dashboard" class="flex items-center py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-all group" :class="isSidebarOpen ? 'px-4' : 'justify-center px-0'">
-          <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-          <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Bảng điều khiển</span>
-        </router-link>
-        <router-link to="/projects" class="flex items-center py-3 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-all group" :class="isSidebarOpen ? 'px-4' : 'justify-center px-0'">
-          <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-          <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Quản lý Dự án</span>
-        </router-link>
-
-        <div v-if="isSidebarOpen" class="mt-8 mb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-t border-slate-800 pt-6">Dự án: {{ projectName }}</div>
+        
+        <div v-if="isSidebarOpen" class="mb-4 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Dự án: {{ projectName }}</div>
         
         <button @click="currentTab = 'board'" class="w-full flex items-center py-3 rounded-xl font-bold transition-all group" :class="[isSidebarOpen ? 'px-4' : 'justify-center px-0', currentTab === 'board' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
           <span class="text-xl shrink-0">📌</span>
           <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Bảng Công việc</span>
+        </button>
+
+        <button @click="currentTab = 'statistics'" class="w-full flex items-center py-3 rounded-xl font-bold transition-all group mt-2" :class="[isSidebarOpen ? 'px-4' : 'justify-center px-0', currentTab === 'statistics' ? 'bg-rose-600 text-white shadow-lg shadow-rose-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
+          <span class="text-xl shrink-0">📊</span>
+          <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Thống Kê Dự Án</span>
         </button>
 
         <button @click="currentTab = 'chat'" class="w-full flex items-center py-3 rounded-xl font-bold transition-all group mt-2" :class="[isSidebarOpen ? 'px-4' : 'justify-center px-0', currentTab === 'chat' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
@@ -61,8 +58,13 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           </button>
           <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 shrink-0"></div>
-          <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight truncate">{{ currentTab === 'board' ? projectName : `Phòng Họp: ${projectName}` }}</h1>
-          <span v-if="currentTab === 'board'" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold uppercase rounded-md border border-slate-200 dark:border-slate-600 shrink-0">{{ userRole }}</span>
+          <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight truncate">
+            <template v-if="currentTab === 'board'">{{ projectName }}</template>
+            <template v-else-if="currentTab === 'statistics'">Thống kê: {{ projectName }}</template>
+            <template v-else-if="currentTab === 'meeting'">Phòng Họp: {{ projectName }}</template>
+            <template v-else>Thảo Luận: {{ projectName }}</template>
+          </h1>
+          <span v-if="currentTab === 'board' || currentTab === 'statistics'" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold uppercase rounded-md border border-slate-200 dark:border-slate-600 shrink-0">{{ userRole }}</span>
           <span v-if="currentTab === 'meeting'" class="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase rounded-md shrink-0">LIVE</span>
         </div>
         
@@ -77,6 +79,7 @@
         </div>
       </header>
 
+      <ProjectStatistics v-if="currentTab === 'statistics'" :projectId="projectId" />
       <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
       <MeetingRoom v-if="currentTab === 'meeting'" :projectId="projectId" :projectName="projectName" :userRole="userRole" />
       <ProjectChat v-if="currentTab === 'chat'" :projectId="projectId" />
@@ -167,6 +170,7 @@
         </button>
       </div>
     </aside>
+    
     <div v-if="showMemberModal" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-2xl p-8 relative overflow-visible animate-fade-in text-slate-800 dark:text-white">
         <h2 class="text-2xl font-bold mb-2">Mời vào dự án</h2>
@@ -198,6 +202,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import ProjectStatistics from "@/components/ProjectStatistics.vue"; 
 import KanbanBoard from "@/components/KanbanBoard.vue";
 import MeetingRoom from "@/components/MeetingRoom.vue";
 import ProjectChat from "@/components/ProjectChat.vue";
@@ -216,9 +221,10 @@ const projectId = route.params.projectId;
 const projectName = ref(route.query.projectName || "Dự án Không tên");
 const userRole = ref(route.query.role || "MEMBER");
 const currentUserName = ref(localStorage.getItem("fullName") || "Bạn"); 
-const currentUserId = ref(localStorage.getItem("userId")); // Thêm biến lưu user ID hiện tại
+const currentUserId = ref(localStorage.getItem("userId"));
 
-const currentTab = ref('board');
+// 🟢 TRẢ LẠI TRẠNG THÁI BOARD LÀ DEFAULT 🟢
+const currentTab = ref('board'); 
 const isSidebarOpen = ref(true);
 const isDarkMode = ref(localStorage.getItem('theme') === 'dark');
 
@@ -232,29 +238,20 @@ const toggleTheme = () => {
 
 const handleLogout = () => { localStorage.removeItem("isLoggedIn"); router.push("/"); };
 
-// ==========================================
-// 🟢 STATE & LOGIC CHO SIDEBAR THÀNH VIÊN
-// ==========================================
+// SIDEBAR THÀNH VIÊN
 const isMemberSidebarOpen = ref(false);
 const projectMembers = ref([]);
 const activeActionMenu = ref(null);
 
-// Lọc dữ liệu ra 2 nhóm: Quản trị và Thành viên
 const managers = computed(() => projectMembers.value.filter(m => m.role === 'OWNER' || m.role === 'MANAGER'));
 const regularMembers = computed(() => projectMembers.value.filter(m => m.role === 'MEMBER'));
 
 const toggleMemberSidebar = () => { 
   isMemberSidebarOpen.value = !isMemberSidebarOpen.value; 
-  if (isMemberSidebarOpen.value) {
-    fetchProjectMembers(); // Cập nhật lại list mỗi khi mở sidebar
-  }
+  if (isMemberSidebarOpen.value) fetchProjectMembers(); 
 };
+const toggleActionMenu = (userId) => { activeActionMenu.value = activeActionMenu.value === userId ? null : userId; };
 
-const toggleActionMenu = (userId) => {
-  activeActionMenu.value = activeActionMenu.value === userId ? null : userId;
-};
-
-// Gọi API lấy danh sách thành viên
 const fetchProjectMembers = async () => {
   try {
     const res = await fetch(`http://localhost:8080/api/projects/members-list?projectId=${projectId}`);
@@ -262,49 +259,35 @@ const fetchProjectMembers = async () => {
   } catch (error) { addToast("Lỗi lấy danh sách thành viên", "error"); }
 };
 
-// Gọi API thăng/giáng quyền
 const updateMemberRole = async (targetUserId, newRole) => {
   activeActionMenu.value = null;
   try {
-    const res = await fetch("http://localhost:8080/api/projects/update-role", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, targetUserId, newRole })
-    });
+    const res = await fetch("http://localhost:8080/api/projects/update-role", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId, targetUserId, newRole }) });
     if (res.ok) { addToast("Đã cập nhật quyền thành công!", "success"); fetchProjectMembers(); } 
     else { addToast("Không thể cập nhật quyền", "error"); }
   } catch(e) { addToast("Lỗi kết nối", "error"); }
 };
 
-// Gọi API kích người
 const kickMember = async (targetUserId, targetName) => {
   activeActionMenu.value = null;
   if(!confirm(`Xóa ${targetName} khỏi dự án?`)) return;
   try {
-    const res = await fetch("http://localhost:8080/api/projects/remove-member", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, targetUserId })
-    });
+    const res = await fetch("http://localhost:8080/api/projects/remove-member", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId, targetUserId }) });
     if (res.ok) { addToast(`Đã xóa ${targetName}!`, "success"); fetchProjectMembers(); }
     else { addToast("Lỗi không thể xóa", "error"); }
   } catch(e) { addToast("Lỗi kết nối", "error"); }
 };
 
-// Gọi API tự rời dự án
 const leaveProject = async () => {
   if(!confirm("RỜI KHỎI dự án này? Hành động này không thể hoàn tác!")) return;
   try {
-    const res = await fetch("http://localhost:8080/api/projects/remove-member", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId, targetUserId: currentUserId.value })
-    });
+    const res = await fetch("http://localhost:8080/api/projects/remove-member", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId, targetUserId: currentUserId.value }) });
     if (res.ok) { addToast("Bạn đã rời khỏi dự án!", "success"); router.push("/projects"); }
     else { addToast("Không thể rời dự án", "error"); }
   } catch(e) { addToast("Lỗi kết nối", "error"); }
 };
 
-// ==========================================
-// 🟢 LOGIC MỜI THÀNH VIÊN (GIỮ NGUYÊN)
-// ==========================================
+// MỜI THÀNH VIÊN
 const showMemberModal = ref(false);
 const memberSearchQuery = ref("");
 const searchResults = ref([]);
@@ -327,43 +310,25 @@ const handleSearchInput = () => {
 const selectUser = (user) => { memberSearchQuery.value = user.email; showDropdown.value = false; };
 
 const submitInvite = async () => {
-  if (!memberSearchQuery.value) {
-    addToast("Vui lòng nhập Email hoặc Username!", "warning");
-    return;
-  }
-  
+  if (!memberSearchQuery.value) { addToast("Vui lòng nhập Email hoặc Username!", "warning"); return; }
   try {
     const res = await fetch("http://localhost:8080/api/projects/add-member", { 
       method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ 
-        projectId: projectId, 
-        projectName: projectName.value, 
-        inviterName: currentUserName.value, 
-        identifier: memberSearchQuery.value, 
-        role: newMemberRole.value 
-      }) 
+      body: JSON.stringify({ projectId: projectId, projectName: projectName.value, inviterName: currentUserName.value, identifier: memberSearchQuery.value, role: newMemberRole.value }) 
     });
-    
     if (res.ok) {
-      showMemberModal.value = false;
-      addToast("Đã gửi lời mời thành công!", "success");
-      memberSearchQuery.value = "";
-      if(isMemberSidebarOpen.value) fetchProjectMembers(); // Load lại DS thành viên nếu sidebar đang mở
+      showMemberModal.value = false; addToast("Đã gửi lời mời thành công!", "success"); memberSearchQuery.value = "";
+      if(isMemberSidebarOpen.value) fetchProjectMembers(); 
     } else { 
-      const data = await res.json();
-      addToast(data.error || "Lỗi gửi lời mời", "error");
+      const data = await res.json(); addToast(data.error || "Lỗi gửi lời mời", "error");
     }
-  } catch (error) {
-    addToast("Lỗi kết nối máy chủ", "error");
-  }
+  } catch (error) { addToast("Lỗi kết nối máy chủ", "error"); }
 };
 
 onMounted(() => {
   if (!projectId) { alert("Lỗi: Không tìm thấy dự án!"); router.push('/projects'); return; }
   if (isDarkMode.value) document.documentElement.classList.add('dark');
   else document.documentElement.classList.remove('dark');
-  
-  // Nạp ngầm danh sách thành viên để hiện số lượng ngay trên nút bấm ở Header
   fetchProjectMembers();
 });
 </script>
