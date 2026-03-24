@@ -56,6 +56,7 @@ public class ApiServer {
         server.createContext("/api/admin/users/update", new AdminUpdateUserHandler());
         server.createContext("/api/admin/users/delete", new AdminDeleteUserHandler());
         server.createContext("/api/admin/users/toggle-lock", new AdminToggleLockUserHandler());
+        server.createContext("/api/admin/dashboard/summary", new AdminDashboardSummaryHandler());
 
         server.createContext("/api/users/search", this::handleSearchUsers);
         server.createContext("/api/users/profile", this::handleUserProfile);
@@ -1285,6 +1286,28 @@ public class ApiServer {
             }
         } catch (Exception e) {
             sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // ==========================================
+    // 🟢 CLASS MỚI: API TỔNG QUAN DASHBOARD ADMIN
+    // ==========================================
+    class AdminDashboardSummaryHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange);
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            try {
+                if ("GET".equals(exchange.getRequestMethod())) {
+                    AdminDAO adminDAO = new AdminDAO();
+                    sendResponse(exchange, 200, adminDAO.getDashboardSummary());
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+            }
         }
     }
 }
