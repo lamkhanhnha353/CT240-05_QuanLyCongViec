@@ -33,9 +33,13 @@
         <h1 class="text-xl font-bold text-slate-800">Không gian làm việc</h1>
         
         <div class="flex items-center space-x-6">
-          <div class="relative">
+          <div class="relative flex items-center group">
             <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
-            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm dự án..." class="w-64 pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm dự án..." class="w-64 pl-10 pr-10 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+            <button @click="startVoiceSearch" class="absolute right-3 top-2 flex items-center transition-colors focus:outline-none" :class="isListening ? 'text-red-500 animate-pulse' : 'text-slate-400 hover:text-blue-500'" title="Tìm bằng giọng nói">
+              <svg v-if="!isListening" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              <span v-else class="text-lg">🎙️</span>
+            </button>
           </div>
 
           <div class="relative" v-click-outside="() => showNotifMenu = false">
@@ -62,7 +66,6 @@
                       <button @click="respondInvite(notif, true)" class="flex-1 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all">Đồng ý</button>
                       <button @click="respondInvite(notif, false)" class="flex-1 py-1.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300 transition-all">Từ chối</button>
                     </div>
-                    
                     <div v-else class="flex justify-end">
                       <button @click="markAsRead(notif.id)" class="px-4 py-1.5 bg-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-300 hover:text-slate-800 transition-all">
                         Đã hiểu
@@ -88,7 +91,7 @@
         </div>
       </header>
 
-      <div class="p-10 overflow-y-auto h-full">
+      <div class="p-10 overflow-y-auto h-full custom-scrollbar">
         <transition name="fade" mode="out-in">
           
           <div v-if="isCreating" key="formView">
@@ -96,13 +99,43 @@
           </div>
 
           <div v-else key="listView">
-            <div class="flex justify-between items-center mb-8">
+            
+            <div class="flex justify-between items-center mb-6">
               <div>
                 <h2 class="text-3xl font-black text-slate-800">Tất cả Dự án</h2>
                 <p class="text-slate-500 mt-1 font-medium">Chọn dự án để vào không gian làm việc. Các dự án đang chờ xác nhận sẽ không hiển thị ở đây.</p>
               </div>
-              <button @click="openCreateForm" class="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 active:scale-95 transition-all">
+              <button @click="openCreateForm" class="px-6 py-3 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:bg-slate-700 active:scale-95 transition-all whitespace-nowrap">
                 + Khởi tạo Dự án
+              </button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+              <span class="text-sm font-bold text-slate-500 uppercase tracking-widest mr-2">Bộ lọc:</span>
+              
+              <select v-model="filterPriority" class="bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold outline-none focus:border-blue-500 cursor-pointer">
+                <option value="ALL">Mọi ưu tiên</option>
+                <option value="HIGH">🔴 Ưu tiên Cao</option>
+                <option value="MEDIUM">🟠 Ưu tiên Trung bình</option>
+                <option value="LOW">🔵 Ưu tiên Thấp</option>
+              </select>
+
+              <select v-model="filterRole" class="bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold outline-none focus:border-blue-500 cursor-pointer">
+                <option value="ALL">Mọi vai trò</option>
+                <option value="OWNER">👑 Trưởng dự án (Owner)</option>
+                <option value="MANAGER">💼 Quản lý (Manager)</option>
+                <option value="MEMBER">👤 Thành viên (Member)</option>
+              </select>
+
+              <div class="h-6 w-px bg-slate-300 mx-2"></div> <span class="text-sm font-bold text-slate-500 uppercase tracking-widest mr-2">Sắp xếp:</span>
+              <select v-model="sortBy" class="bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold outline-none focus:border-blue-500 cursor-pointer">
+                <option value="newest">🕒 Mới nhất (Mặc định)</option>
+                <option value="name_asc">🔤 Tên A-Z</option>
+                <option value="name_desc">🔤 Tên Z-A</option>
+              </select>
+
+              <button v-if="filterPriority !== 'ALL' || filterRole !== 'ALL' || sortBy !== 'newest'" @click="resetFilters" class="ml-auto text-sm text-red-500 font-bold hover:underline">
+                Xóa bộ lọc
               </button>
             </div>
 
@@ -112,65 +145,78 @@
               <h3 class="text-xl font-bold text-slate-700">Chưa có dự án nào</h3>
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              <div v-for="p in filteredProjects" :key="p.id" class="bg-white rounded-3xl p-6 border transition-all duration-200 group relative" :class="starredProjects.includes(p.id) ? 'border-yellow-300 bg-yellow-50/10' : 'border-slate-200 hover:shadow-xl hover:border-blue-400'">
-                
-                <div class="absolute top-4 right-4 z-10">
-                  <button @click.stop="toggleMenu(p.id)" class="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                  </button>
-                  <div v-if="activeMenu === p.id" class="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2 overflow-hidden">
-                    <button v-if="['OWNER', 'MANAGER'].includes(p.myRole)" @click.stop="openEditForm(p)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 flex items-center"><span class="mr-2">✏️</span> Chỉnh sửa</button>
-                    <button @click.stop="toggleStar(p.id)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold flex items-center" :class="starredProjects.includes(p.id) ? 'text-slate-500' : 'text-yellow-600'">
-                      <span class="mr-2">⭐</span> {{ starredProjects.includes(p.id) ? 'Bỏ đánh dấu' : 'Đánh dấu sao' }}
+            <div v-else>
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div v-for="p in paginatedProjects" :key="p.id" class="bg-white rounded-3xl p-6 border transition-all duration-200 group relative" :class="starredProjects.includes(p.id) ? 'border-yellow-300 bg-yellow-50/10' : 'border-slate-200 hover:shadow-xl hover:border-blue-400'">
+                  
+                  <div class="absolute top-4 right-4 z-10">
+                    <button @click.stop="toggleMenu(p.id)" class="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
+                      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                     </button>
-                    <div v-if="p.myRole === 'OWNER'" class="my-1 border-t border-slate-100"></div>
-                    <button v-if="p.myRole === 'OWNER'" @click.stop="deleteProject(p.id)" class="w-full text-left px-5 py-3 hover:bg-red-50 text-sm font-bold text-red-600 flex items-center"><span class="mr-2">🗑️</span> Xóa dự án</button>
-                  </div>
-                </div>
-
-                <div @click="goToBoard(p)" class="cursor-pointer">
-                  <div class="flex space-x-2 mb-4">
-                    <span :class="getPriorityClass(p.priority)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg border">{{ formatPriority(p.priority) }}</span>
-                    <span v-if="p.myRole === 'OWNER'" class="px-3 py-1.5 bg-yellow-400 text-yellow-900 text-[10px] font-black rounded-lg border border-yellow-500 shadow-sm">👑 OWNER</span>
-                    <span v-else-if="p.myRole === 'MANAGER'" class="px-3 py-1.5 bg-purple-500 text-white text-[10px] font-black rounded-lg shadow-sm">💼 MANAGER</span>
-                    <span v-else class="px-3 py-1.5 bg-slate-200 text-slate-600 text-[10px] font-black rounded-lg border border-slate-300">👤 MEMBER</span>
-                  </div>
-
-                  <h3 class="text-xl font-extrabold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors truncate">
-                    {{ p.name }} <span v-if="starredProjects.includes(p.id)" class="text-yellow-400 ml-1 text-lg">★</span>
-                  </h3>
-                  <p class="text-slate-500 text-sm line-clamp-2 h-10 mb-6 leading-relaxed">{{ p.description || 'Chưa có mô tả ngắn cho dự án này.' }}</p>
-
-                  <div class="mb-5">
-                    <div class="flex justify-between items-end mb-2">
-                      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ</span>
-                      <span class="text-sm font-black" :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'text-emerald-500' : 'text-blue-600'">{{ getProgress(p.completedTasks, p.totalTasks) }}%</span>
-                    </div>
-                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'bg-emerald-500' : 'bg-blue-600'" class="h-full rounded-full transition-all duration-1000 ease-out" :style="'width: ' + getProgress(p.completedTasks, p.totalTasks) + '%'"></div>
+                    <div v-if="activeMenu === p.id" class="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 py-2 overflow-hidden">
+                      <button v-if="['OWNER', 'MANAGER'].includes(p.myRole)" @click.stop="openEditForm(p)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 flex items-center"><span class="mr-2">✏️</span> Chỉnh sửa</button>
+                      <button @click.stop="toggleStar(p.id)" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm font-bold flex items-center" :class="starredProjects.includes(p.id) ? 'text-slate-500' : 'text-yellow-600'">
+                        <span class="mr-2">⭐</span> {{ starredProjects.includes(p.id) ? 'Bỏ đánh dấu' : 'Đánh dấu sao' }}
+                      </button>
+                      <div v-if="p.myRole === 'OWNER'" class="my-1 border-t border-slate-100"></div>
+                      <button v-if="p.myRole === 'OWNER'" @click.stop="deleteProject(p.id)" class="w-full text-left px-5 py-3 hover:bg-red-50 text-sm font-bold text-red-600 flex items-center"><span class="mr-2">🗑️</span> Xóa dự án</button>
                     </div>
                   </div>
 
-                  <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-500">
-                    <div class="flex items-center space-x-1.5" :class="isDeadlineNear(p.endDate) ? 'text-red-500' : ''"><span>⏳</span><span>{{ formatDate(p.endDate) }}</span></div>
-                    <div class="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-200"><span class="text-blue-500">☑️</span><span>{{ p.completedTasks }}/{{ p.totalTasks }} Task</span></div>
-                  </div>
-                </div>
+                  <div @click="goToBoard(p)" class="cursor-pointer">
+                    <div class="flex space-x-2 mb-4">
+                      <span :class="getPriorityClass(p.priority)" class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg border">{{ formatPriority(p.priority) }}</span>
+                      <span v-if="p.myRole === 'OWNER'" class="px-3 py-1.5 bg-yellow-400 text-yellow-900 text-[10px] font-black rounded-lg border border-yellow-500 shadow-sm">👑 OWNER</span>
+                      <span v-else-if="p.myRole === 'MANAGER'" class="px-3 py-1.5 bg-purple-500 text-white text-[10px] font-black rounded-lg shadow-sm">💼 MANAGER</span>
+                      <span v-else class="px-3 py-1.5 bg-slate-200 text-slate-600 text-[10px] font-black rounded-lg border border-slate-300">👤 MEMBER</span>
+                    </div>
 
+                    <h3 class="text-xl font-extrabold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors truncate">
+                      {{ p.name }} <span v-if="starredProjects.includes(p.id)" class="text-yellow-400 ml-1 text-lg">★</span>
+                    </h3>
+                    <p class="text-slate-500 text-sm line-clamp-2 h-10 mb-6 leading-relaxed">{{ p.description || 'Chưa có mô tả ngắn cho dự án này.' }}</p>
+
+                    <div class="mb-5">
+                      <div class="flex justify-between items-end mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ</span>
+                        <span class="text-sm font-black" :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'text-emerald-500' : 'text-blue-600'">{{ getProgress(p.completedTasks, p.totalTasks) }}%</span>
+                      </div>
+                      <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div :class="getProgress(p.completedTasks, p.totalTasks) === 100 ? 'bg-emerald-500' : 'bg-blue-600'" class="h-full rounded-full transition-all duration-1000 ease-out" :style="'width: ' + getProgress(p.completedTasks, p.totalTasks) + '%'"></div>
+                      </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center text-xs font-bold text-slate-500">
+                      <div class="flex items-center space-x-1.5" :class="isDeadlineNear(p.endDate) ? 'text-red-500' : ''"><span>⏳</span><span>{{ formatDate(p.endDate) }}</span></div>
+                      <div class="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-200"><span class="text-blue-500">☑️</span><span>{{ p.completedTasks }}/{{ p.totalTasks }} Task</span></div>
+                    </div>
+                  </div>
+
+                </div>
               </div>
+
+              <div v-if="totalPages > 1" class="mt-12 flex justify-center items-center space-x-3">
+                <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-all shadow-sm">Trước</button>
+                <div class="flex space-x-1.5">
+                  <button v-for="page in totalPages" :key="page" @click="changePage(page)" class="w-11 h-11 rounded-xl font-black text-sm transition-all shadow-sm flex items-center justify-center" :class="currentPage === page ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'">
+                    {{ page }}
+                  </button>
+                </div>
+                <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-all shadow-sm">Sau</button>
+              </div>
+
             </div>
+
           </div>
         </transition>
       </div>
 
     </main>
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import CreateProjectForm from "../components/CreateProjectForm.vue"; 
 import { useToast } from "../composables/useToast";
@@ -202,10 +248,29 @@ const editData = ref(null);
 const searchQuery = ref("");
 const starredProjects = ref([]);
 
-// THÔNG BÁO
+// VOICE SEARCH
+const isListening = ref(false);
+
+// THÔNG BÁO (Giữ nguyên của bạn)
 const notifications = ref([]);
 const showNotifMenu = ref(false);
 const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
+
+// BỘ LỌC & SẮP XẾP MỚI
+const filterPriority = ref('ALL');
+const filterRole = ref('ALL');
+const sortBy = ref('newest'); // Mặc định hiển thị dự án mới nhất lên đầu
+
+// PHÂN TRANG (9 DỰ ÁN MỖI TRANG)
+const currentPage = ref(1);
+const itemsPerPage = ref(9); 
+
+const resetFilters = () => {
+  filterPriority.value = 'ALL';
+  filterRole.value = 'ALL';
+  sortBy.value = 'newest';
+  currentPage.value = 1;
+};
 
 onMounted(() => {
   const storedUser = localStorage.getItem("username");
@@ -220,7 +285,24 @@ onMounted(() => {
   setInterval(fetchNotifications, 10000); 
 });
 
-// ĐÃ SỬA: HÀM ĐẨY SANG TRANG KANBAN BẰNG ROUTER
+const startVoiceSearch = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert("Trình duyệt không hỗ trợ tìm kiếm giọng nói. Vui lòng dùng Chrome!"); return; }
+  
+  if (isListening.value) return; 
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'vi-VN';
+  
+  recognition.onstart = () => { isListening.value = true; };
+  recognition.onresult = (event) => {
+    searchQuery.value = event.results[0][0].transcript.replace(/[.,!?]$/, '').trim();
+  };
+  recognition.onerror = () => { isListening.value = false; };
+  recognition.onend = () => { isListening.value = false; };
+  
+  recognition.start();
+};
+
 const goToBoard = (project) => {
   router.push({
     path: `/board/${project.id}`,
@@ -247,7 +329,6 @@ const markAsRead = async (notifId) => {
       headers: { "User-ID": userId }
     });
     if (response.ok) {
-      // Cập nhật lại danh sách thông báo để nó mờ đi
       fetchNotifications(); 
     }
   } catch (error) {
@@ -284,11 +365,57 @@ const toggleStar = (id) => {
   localStorage.setItem(`starred_${currentUser.value}`, JSON.stringify(starredProjects.value));
 };
 
+// 🟢 TÍNH TOÁN LỌC, SẮP XẾP
 const filteredProjects = computed(() => {
-  return projects.value.filter(p => {
+  let result = projects.value.filter(p => {
+    // 1. Tìm kiếm
     const searchStr = searchQuery.value.toLowerCase();
-    return p.name.toLowerCase().includes(searchStr) || (p.description && p.description.toLowerCase().includes(searchStr));
+    const matchSearch = p.name.toLowerCase().includes(searchStr) || (p.description && p.description.toLowerCase().includes(searchStr));
+    
+    // 2. Lọc Ưu tiên
+    const matchPriority = filterPriority.value === 'ALL' || p.priority === filterPriority.value;
+    
+    // 3. Lọc Vai trò
+    const matchRole = filterRole.value === 'ALL' || p.myRole === filterRole.value;
+
+    return matchSearch && matchPriority && matchRole;
   });
+
+  // 4. Sắp xếp (DỰ ÁN MỚI TẠO LÊN ĐẦU TIÊN KHI CHỌN 'NEWEST')
+  result.sort((a, b) => {
+    if (sortBy.value === 'newest') {
+      return b.id - a.id; // ID lớn hơn (mới hơn) nằm trên
+    } else if (sortBy.value === 'name_asc') {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy.value === 'name_desc') {
+      return b.name.localeCompare(a.name);
+    }
+    return 0;
+  });
+
+  return result;
+});
+
+// 🟢 PHÂN TRANG
+const totalPages = computed(() => Math.ceil(filteredProjects.value.length / itemsPerPage.value) || 1);
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredProjects.value.slice(start, start + itemsPerPage.value);
+});
+
+const changePage = (page) => {
+  if (page >= 1 && page <= totalPages.value) currentPage.value = page;
+};
+
+// Theo dõi khi filter thay đổi thì trả về trang 1
+watch([searchQuery, filterPriority, filterRole, sortBy], () => {
+  currentPage.value = 1;
+});
+
+// Chống lỗi khi totalPages bị thu nhỏ
+watch(filteredProjects, () => {
+  if (currentPage.value > totalPages.value) currentPage.value = totalPages.value || 1;
 });
 
 const fetchProjects = async () => {
@@ -303,8 +430,22 @@ const fetchProjects = async () => {
 };
 
 const toggleMenu = (id) => { activeMenu.value = activeMenu.value === id ? null : id; };
-const openCreateForm = () => { isEditMode.value = false; editData.value = null; isCreating.value = true; };
-const openEditForm = (project) => { activeMenu.value = null; isEditMode.value = true; editData.value = project; isCreating.value = true; };
+
+// 🟢 MỞ FORM (TẠO MỚI & SỬA) ĐÃ FIX LỖI KHÔNG SỬA ĐƯỢC
+const openCreateForm = () => { 
+  isEditMode.value = false; 
+  editData.value = null; 
+  isCreating.value = true; 
+};
+
+const openEditForm = (project) => { 
+  activeMenu.value = null; 
+  isEditMode.value = true; 
+  // SAO CHÉP (CLONE) DATA TRÁNH LỖI REACTIVITY CỦA VUE GÂY LỖI SỬA
+  editData.value = JSON.parse(JSON.stringify(project)); 
+  isCreating.value = true; 
+};
+
 const handleFormSuccess = () => { isCreating.value = false; fetchProjects(); };
 const handleLogout = () => { localStorage.clear(); router.push("/"); };
 
@@ -354,4 +495,7 @@ const getPriorityClass = (priority) => {
 .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>

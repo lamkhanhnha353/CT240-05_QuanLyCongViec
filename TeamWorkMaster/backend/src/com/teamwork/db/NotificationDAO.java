@@ -40,6 +40,16 @@ public class NotificationDAO {
         }
     }
 
+    private String escapeJson(String data) {
+        if (data == null)
+            return "";
+        return data.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "")
+                .replace("\t", "\\t");
+    }
+
     public String getUserNotifications(int userId) {
         StringBuilder json = new StringBuilder("[");
         String sql = "SELECT * FROM TBL_NOTIFICATIONS WHERE UserID = ? ORDER BY CreatedAt DESC";
@@ -54,8 +64,8 @@ public class NotificationDAO {
                 json.append("{")
                         .append("\"id\":").append(rs.getInt("ID")).append(",")
                         .append("\"projectId\":").append(rs.getInt("ProjectID")).append(",")
-                        .append("\"title\":\"").append(rs.getString("Title")).append("\",")
-                        .append("\"message\":\"").append(rs.getString("Message")).append("\",")
+                        .append("\"title\":\"").append(escapeJson(rs.getString("Title"))).append("\",")
+                        .append("\"message\":\"").append(escapeJson(rs.getString("Message"))).append("\",")
                         .append("\"isRead\":").append(rs.getBoolean("IsRead"))
                         .append("}");
                 first = false;
