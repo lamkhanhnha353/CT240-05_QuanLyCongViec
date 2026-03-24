@@ -241,4 +241,69 @@ public class UserDAO {
         }
         return "";
     }
+
+    // ==========================================
+    // 🟢 HÀM ĐẶT LẠI MẬT KHẨU (FORGOT PASSWORD)
+    // ==========================================
+    public boolean resetPassword(String email, String newPassword) {
+        // Chỉ cho phép lấy lại pass nếu Email tồn tại và tài khoản đang hoạt động
+        // (IsActive = 1)
+        String sql = "UPDATE TBL_USERS SET PasswordHash = ? WHERE Email = ? AND IsActive = 1";
+        try {
+            Connection conn = DatabaseConnection.getInstance().getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, newPassword);
+            pstmt.setString(2, email);
+
+            int rowsAffected = pstmt.executeUpdate();
+            pstmt.close();
+
+            return rowsAffected > 0; // Trả về true nếu cập nhật thành công
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] Lỗi reset mật khẩu: " + e.getMessage());
+        }
+        return false;
+    }
+
+    // 🟢 LẤY HỒ SƠ ĐỂ HIỂN THỊ EMAIL
+    public String getUserProfile(int userId) {
+        String sql = "SELECT Username, FullName, Email, Role FROM TBL_USERS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                String email = rs.getString("Email");
+                return String.format("{\"username\":\"%s\", \"fullName\":\"%s\", \"email\":\"%s\", \"role\":\"%s\"}",
+                        rs.getString("Username"), rs.getString("FullName"),
+                        email != null ? email : "", rs.getString("Role"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // 🟢 ĐỔI MẬT KHẨU
+    public boolean changePassword(int userId, String oldPassword, String newPassword) {
+        String checkSql = "SELECT ID FROM TBL_USERS WHERE ID = ? AND PasswordHash = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmtCheck = conn.prepareStatement(checkSql)) {
+            pstmtCheck.setInt(1, userId);
+            pstmtCheck.setString(2, oldPassword); // Kiểm tra Pass cũ
+            ResultSet rs = pstmtCheck.executeQuery();
+
+            if (rs.next()) { // Nếu pass cũ đúng
+                String updateSql = "UPDATE TBL_USERS SET PasswordHash = ? WHERE ID = ?";
+                try (PreparedStatement pstmtUpdate = conn.prepareStatement(updateSql)) {
+                    pstmtUpdate.setString(1, newPassword);
+                    pstmtUpdate.setInt(2, userId);
+                    return pstmtUpdate.executeUpdate() > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] Lỗi đổi mật khẩu: " + e.getMessage());
+        }
+        return false;
+    }
 }

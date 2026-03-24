@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import AccountView from '../views/AccountView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -41,7 +41,11 @@ const router = createRouter({
       component: () => import('../views/KanbanBoardView.vue')
      },
 
-
+     {
+      path: '/account',
+      name: 'account',
+      component: AccountView
+    },
     // ==========================================
     // KHU VỰC CẤM - CHỈ DÀNH CHO ADMIN
     // ==========================================

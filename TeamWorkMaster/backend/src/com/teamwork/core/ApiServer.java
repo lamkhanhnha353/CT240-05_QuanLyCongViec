@@ -36,6 +36,7 @@ public class ApiServer {
         server.createContext("/api/tasks/delete", this::handleTaskDelete);
         server.createContext("/api/tasks/update-details", this::handleTaskUpdateDetails);
         server.createContext("/api/tasks/list", this::handleTaskList);
+        server.createContext("/api/tasks/my-tasks", this::handleMyTasks); // 🟢 ĐĂNG KÝ API MỚI
         server.createContext("/api/tasks/create", this::handleTaskCreate);
         server.createContext("/api/tasks/update-status", this::handleTaskUpdateStatus);
 
@@ -48,6 +49,7 @@ public class ApiServer {
         server.createContext("/api/statistics", new StatisticsHandler());
         server.createContext("/api/login", new LoginHandler());
         server.createContext("/api/register", new RegisterHandler());
+        server.createContext("/api/forgot-password", new ForgotPasswordHandler());
 
         server.createContext("/api/admin/users/create", new AdminCreateUserHandler());
         server.createContext("/api/admin/users", new AdminGetUsersHandler());
@@ -56,11 +58,13 @@ public class ApiServer {
         server.createContext("/api/admin/users/toggle-lock", new AdminToggleLockUserHandler());
 
         server.createContext("/api/users/search", this::handleSearchUsers);
+        server.createContext("/api/users/profile", this::handleUserProfile);
+        server.createContext("/api/users/change-password", this::handleChangePassword);
         server.createContext("/api/notifications/list", this::handleGetNotifications);
         server.createContext("/api/notifications/respond", this::handleRespondInvite);
         server.createContext("/api/project-chat", new ProjectChatHandler());
         server.createContext("/api/meetings", new MeetingHandler());
-
+        server.createContext("/api/dashboard/summary", this::handleDashboardSummary);
         server.setExecutor(null);
     }
 
@@ -871,6 +875,30 @@ public class ApiServer {
         }
     }
 
+    // ==========================================
+    // 🟢 HÀM MỚI: XỬ LÝ API MY TASKS
+    // ==========================================
+    private void handleMyTasks(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            // Lấy ID người dùng từ Header do Vue gửi lên
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+            if (userId > 0) {
+                sendResponse(ex, 200, taskDAO.getMyTasks(userId));
+            } else {
+                sendResponse(ex, 401, "{\"error\":\"Không xác định được người dùng!\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
     private void handleCreate(HttpExchange ex) throws IOException {
         handleCors(ex);
         if ("OPTIONS".equals(ex.getRequestMethod())) {
@@ -1136,6 +1164,127 @@ public class ApiServer {
             } catch (Exception e) {
                 sendResponse(exchange, 500, "{\"error\":\"" + e.getMessage() + "\"}");
             }
+        }
+    }
+
+    // ==========================================
+    // 🟢 CLASS MỚI: XỬ LÝ QUÊN MẬT KHẨU
+    // ==========================================
+    class ForgotPasswordHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            handleCors(exchange); // Mở cửa CORS không bị chặn chặn nữa
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("POST".equals(exchange.getRequestMethod())) {
+                try {
+                    String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    String email = extract(body, "email");
+
+                    if (email == null || email.isEmpty()) {
+                        sendResponse(exchange, 400, "{\"error\": \"Email không hợp lệ!\"}");
+                        return;
+                    }
+
+                    // 1. TẠO MẬT KHẨU NGẪU NHIÊN 6 KÝ TỰ (Chữ in hoa và số)
+                    String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                    StringBuilder newPass = new StringBuilder();
+                    java.util.Random rnd = new java.util.Random();
+                    for (int i = 0; i < 6; i++) {
+                        newPass.append(chars.charAt(rnd.nextInt(chars.length())));
+                    }
+                    String generatedPassword = newPass.toString();
+
+                    // 2. CẬP NHẬT VÀO DATABASE
+                    if (userDAO.resetPassword(email, generatedPassword)) {
+
+                        // 3. NẾU CẬP NHẬT THÀNH CÔNG -> TẠO THREAD GỬI EMAIL
+                        new Thread(() -> {
+                            try {
+                                String subject = "[Teamwork Master] Khôi phục mật khẩu";
+                                String content = "Xin chào,\n\n"
+                                        + "Bạn đã yêu cầu khôi phục mật khẩu cho tài khoản của mình.\n"
+                                        + "Mật khẩu mới của bạn là: " + generatedPassword + "\n\n"
+                                        + "Vui lòng đăng nhập và đổi lại mật khẩu mới để đảm bảo an toàn bảo mật.\n\n"
+                                        + "Trân trọng,\n"
+                                        + "Hệ thống Teamwork Master";
+
+                                com.teamwork.plugins.EmailService.sendEmail(email, subject, content);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }).start(); // Chạy ngầm để Frontend không phải chờ gửi mail xong mới được phản hồi
+
+                        sendResponse(exchange, 200, "{\"success\": true, \"message\": \"Đã gửi mật khẩu mới\"}");
+                    } else {
+                        // Trả về 400 nếu tìm không thấy email trong DB
+                        sendResponse(exchange, 400, "{\"error\": \"Email không tồn tại hoặc tài khoản đã bị khóa!\"}");
+                    }
+                } catch (Exception e) {
+                    sendResponse(exchange, 500, "{\"error\": \"" + e.getMessage() + "\"}");
+                }
+            }
+        }
+    }
+
+    private void handleDashboardSummary(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String userIdStr = ex.getRequestHeaders().getFirst("User-ID");
+            int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+            sendResponse(ex, 200, new DashboardDAO().getDashboardSummary(userId));
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // 🟢 API XỬ LÝ LẤY PROFILE
+    private void handleUserProfile(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            int userId = Integer.parseInt(extractQuery(ex.getRequestURI().getQuery(), "id"));
+            String profile = userDAO.getUserProfile(userId);
+            if (profile != null)
+                sendResponse(ex, 200, profile);
+            else
+                sendResponse(ex, 404, "{\"error\": \"User not found\"}");
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    // 🟢 API XỬ LÝ ĐỔI MẬT KHẨU
+    private void handleChangePassword(HttpExchange ex) throws IOException {
+        handleCors(ex);
+        if ("OPTIONS".equals(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
+        try {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int userId = Integer.parseInt(extract(body, "userId"));
+            String oldPass = extract(body, "oldPassword");
+            String newPass = extract(body, "newPassword");
+
+            if (userDAO.changePassword(userId, oldPass, newPass)) {
+                sendResponse(ex, 200, "{\"success\": true}");
+            } else {
+                sendResponse(ex, 400, "{\"success\": false, \"message\": \"Mật khẩu cũ không chính xác!\"}");
+            }
+        } catch (Exception e) {
+            sendResponse(ex, 500, "{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
 }

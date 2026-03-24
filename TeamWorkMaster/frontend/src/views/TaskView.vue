@@ -1,381 +1,360 @@
 <template>
-  <div class="space-y-6 relative">
+  <div class="min-h-screen bg-[#f8f9fa] flex font-sans">
     
-    <header class="flex justify-between items-center">
-      <div>
-        <h1 class="text-3xl font-extrabold text-slate-800">Quản lý Công việc</h1>
-        <p class="text-slate-500 font-medium mt-1">Theo dõi tiến độ và phân công công việc.</p>
+    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
+      <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg">T</div>
+        <div>
+          <h2 class="text-xl font-black tracking-tighter">PROJECT ALPHA</h2>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Marketing Dept</p>
+        </div>
       </div>
-      <button @click="openCreateModal" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all">
-        + Tạo công việc
-      </button>
-    </header>
+      <nav class="flex-1 p-4 space-y-2">
+        <router-link to="/dashboard" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
+          <span>📊</span><span>Bảng điều khiển</span>
+        </router-link>
+        <router-link to="/projects" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
+          <span>📂</span><span>Dự án</span>
+        </router-link>
+        <router-link to="/tasks" class="flex items-center space-x-3 px-4 py-3 bg-blue-600/10 text-blue-500 rounded-xl font-bold transition-all">
+          <span>☑️</span><span>Công việc của tôi</span>
+        </router-link>
+        <router-link to="/account" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
+          <span>👤</span><span>Tài khoản</span>
+        </router-link>
+      </nav>
+      <div class="p-6">
+        <button @click="handleLogout" class="w-full flex items-center justify-center py-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 font-bold rounded-xl transition-all">
+          Đăng xuất
+        </button>
+      </div>
+    </aside>
 
-    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row gap-4 justify-between items-center">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
       
-      <div class="w-full xl:w-1/3 relative">
-        <input v-model="searchQuery" type="text" placeholder="🔍 Tìm kiếm tên công việc..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
-      </div>
-      
-      <div class="w-full xl:w-auto flex flex-wrap gap-4 items-center">
+      <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-10 shrink-0 z-10 shadow-sm">
+        <h1 class="text-xl font-bold text-slate-800">Không gian làm việc</h1>
         
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-slate-500">Dự án:</span>
-          <select v-model="filterProject" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer text-slate-700">
-            <option value="ALL">Tất cả dự án</option>
-            <option v-for="project in mockProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
-          </select>
-        </div>
+        <div class="flex items-center space-x-6">
+          <div class="relative flex items-center group">
+            <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
+            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm công việc..." class="w-64 pl-10 pr-10 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-slate-500">Trạng thái:</span>
-          <select v-model="filterStatus" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer text-slate-700">
-            <option value="ALL">Tất cả</option>
-            <option value="TODO">Chưa bắt đầu</option>
-            <option value="IN_PROGRESS">Đang làm</option>
-            <option value="DONE">Hoàn thành</option>
-            <option value="CANCEL">Đã hủy</option>
-          </select>
-        </div>
+          <div class="relative" v-click-outside="() => showNotifMenu = false">
+            <button @click="toggleNotifMenu" class="relative p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-all focus:outline-none">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+              <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">{{ unreadCount }}</span>
+            </button>
 
-        <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-slate-500">Sắp xếp:</span>
-          <select v-model="sortBy" class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer text-slate-700">
-            <option value="default">Mặc định</option>
-            <option value="deadline">⏳ Gần Deadline nhất</option>
-            <option value="priority">🔥 Quan trọng nhất</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-6 text-center text-slate-500" v-if="isLoading">Đang tải dữ liệu...</div>
-      
-      <table v-else class="w-full text-left border-collapse">
-        <thead>
-          <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-            <th class="p-4 font-bold">Tên công việc</th>
-            <th class="p-4 font-bold">Dự án</th>
-            <th class="p-4 font-bold text-center">Tình trạng</th>
-            <th class="p-4 font-bold text-center">Hạn chót</th>
-            <th class="p-4 font-bold">Người thực hiện</th>
-            <th class="p-4 font-bold w-48">Chú thích</th>
-            <th class="p-4 font-bold text-center">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr v-for="task in paginatedTasks" :key="task.id" class="hover:bg-slate-50 transition-colors">
-            
-            <td class="p-4">
-              <div class="font-bold text-slate-800">{{ task.title }}</div>
-              <div class="text-xs font-medium mt-1" :class="task.priority === 'HIGH' ? 'text-red-500' : (task.priority === 'MEDIUM' ? 'text-orange-500' : 'text-blue-500')">
-                Mức độ: {{ task.priority || 'MEDIUM' }}
+            <div v-if="showNotifMenu" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden origin-top-right animate-fade-in">
+              <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Thông báo</h3>
+                <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-md">{{ unreadCount }} mới</span>
               </div>
-            </td>
-
-            <td class="p-4 font-medium text-slate-600">
-              <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs border border-indigo-100 font-bold" v-if="task.projectId">
-                📁 {{ getProject(task.projectId).name }}
-              </span>
-            </td>
-            
-            <td class="p-4 text-center">
-              <span class="px-3 py-1 rounded-full text-xs font-bold"
-                :class="{
-                  'bg-slate-100 text-slate-600': task.progress === 'TODO',
-                  'bg-blue-100 text-blue-700': task.progress === 'IN_PROGRESS',
-                  'bg-green-100 text-green-700': task.progress === 'DONE',
-                  'bg-red-100 text-red-700': task.progress === 'CANCEL'
-                }">
-                {{ formatStatus(task.progress) }}
-              </span>
-            </td>
-
-            <td class="p-4 text-center">
-              <div class="text-red-500 font-bold text-sm" v-if="task.deadline">
-                ⏳ {{ task.deadline.split(' ')[0] }}
+              <div class="max-h-[350px] overflow-y-auto p-6 text-center text-slate-400 text-sm font-medium">
+                Chức năng thông báo
               </div>
-              <span v-else class="text-slate-400">---</span>
-            </td>
+            </div>
+          </div>
 
-            <td class="p-4">
-              <div class="flex items-center gap-2" v-if="task.assignee">
-                <div :class="['w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-sm', getUser(task.assignee).color]">
-                  {{ getUser(task.assignee).name.charAt(0) }}
-                </div>
-                <span class="font-medium text-slate-700">{{ getUser(task.assignee).name }}</span>
-              </div>
-              <div v-else class="text-slate-400 italic text-sm">Chưa giao</div>
-            </td>
-
-            <td class="p-4">
-              <div class="text-sm text-slate-600 line-clamp-2" :title="task.notes">
-                {{ task.notes || '---' }}
-              </div>
-            </td>
-
-            <td class="p-4 text-center">
-              <button @click="openEditModal(task)" class="text-blue-500 hover:text-blue-700 font-bold text-sm px-2 mr-2">Sửa</button>
-              <button @click="handleDeleteTask(task.id)" class="text-red-500 hover:text-red-700 font-bold text-sm px-2">Xóa</button>
-            </td>
-          </tr>
-          <tr v-if="paginatedTasks.length === 0">
-            <td colspan="7" class="p-8 text-center text-slate-500 font-medium">Không tìm thấy công việc nào.</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div v-if="totalPages > 1" class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end items-center gap-1 text-sm font-bold text-slate-600">
-        <button v-for="page in totalPages" :key="page" @click="goToPage(page)" :class="['px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors', currentPage === page ? 'bg-blue-600 text-white hover:bg-blue-700' : '']">{{ page }}</button>
-        <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1.5 ml-2 rounded-lg hover:bg-slate-200 disabled:opacity-40 transition-colors">Trang sau ›</button>
-        <button @click="goToLastPage" :disabled="currentPage === totalPages" class="px-3 py-1.5 rounded-lg hover:bg-slate-200 disabled:opacity-40 transition-colors">Trang cuối »</button>
-      </div>
-    </div>
-
-    <div v-if="showModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
-        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h2 class="text-xl font-extrabold text-slate-800">{{ isEditing ? '✏️ Sửa công việc' : '✨ Giao việc mới' }}</h2>
-          <button @click="showModal = false" class="text-slate-400 hover:text-red-500 font-bold text-xl">&times;</button>
+          <div class="flex items-center space-x-3 border-l border-slate-300 pl-6">
+            <div class="text-right">
+              <p class="text-sm font-bold text-slate-700">{{ currentUser }}</p>
+              <p class="text-xs text-blue-500 font-bold">Đang trực tuyến</p>
+            </div>
+            <div class="w-10 h-10 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-black shadow-md uppercase">{{ firstLetter }}</div>
+          </div>
         </div>
-        
-        <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
+      </header>
+
+      <div class="flex-1 overflow-y-auto p-10 custom-scrollbar">
+        <div class="max-w-[1400px] mx-auto">
           
-          <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2">
-              <label class="block text-sm font-bold text-slate-700 mb-1">Tên công việc *</label>
-              <input v-model="formTask.title" required type="text" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nhập tên công việc..." />
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+            <div>
+              <h2 class="text-3xl font-black text-slate-800">Công việc của tôi</h2>
+              <p class="text-slate-500 mt-1 font-medium">Quản lý các nhiệm vụ được giao trên tất cả các dự án.</p>
             </div>
-
-            <div class="col-span-2 sm:col-span-1">
-              <label class="block text-sm font-bold text-slate-700 mb-1">Dự án *</label>
-              <select v-model="formTask.projectId" required class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="" disabled>-- Chọn dự án --</option>
-                <option v-for="project in mockProjects" :key="project.id" :value="project.id">{{ project.name }}</option>
-              </select>
-            </div>
-
-            <div class="col-span-2 sm:col-span-1">
-              <label class="block text-sm font-bold text-slate-700 mb-1">Tình trạng</label>
-              <select v-model="formTask.progress" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="TODO">Chưa bắt đầu</option>
-                <option value="IN_PROGRESS">Đang làm</option>
-                <option value="DONE">Hoàn thành</option>
-                <option value="CANCEL">Đã hủy</option>
-              </select>
+            
+            <div class="flex gap-4">
+              <div class="bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center min-w-[100px]">
+                <span class="text-2xl font-black text-slate-800">{{ taskStats.total }}</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tổng số</span>
+              </div>
+              <div class="bg-orange-50 px-5 py-3 rounded-2xl shadow-sm border border-orange-100 flex flex-col items-center min-w-[100px]">
+                <span class="text-2xl font-black text-orange-600">{{ taskStats.inProgress }}</span>
+                <span class="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Đang làm</span>
+              </div>
+              <div class="bg-emerald-50 px-5 py-3 rounded-2xl shadow-sm border border-emerald-100 flex flex-col items-center min-w-[100px]">
+                <span class="text-2xl font-black text-emerald-600">{{ taskStats.done }}</span>
+                <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Hoàn thành</span>
+              </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
-            <div>
-              <label class="block text-sm font-bold text-slate-700 mb-1">Người thực hiện</label>
-              <select v-model="formTask.assignee" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                <option value="">-- Trống --</option>
-                <option v-for="user in mockUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
-              </select>
+          <div class="flex flex-wrap items-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <span class="text-sm font-bold text-slate-500 uppercase tracking-widest mr-2">Bộ lọc trạng thái:</span>
+            
+            <div class="flex space-x-2">
+              <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-xl text-sm font-bold transition-colors">Tất cả</button>
+              <button @click="filterStatus = 'TODO'" :class="filterStatus === 'TODO' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-xl text-sm font-bold transition-colors">Cần làm</button>
+              <button @click="filterStatus = 'IN_PROGRESS'" :class="filterStatus === 'IN_PROGRESS' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-xl text-sm font-bold transition-colors">Đang thực hiện</button>
+              <button @click="filterStatus = 'DONE'" :class="filterStatus === 'DONE' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-xl text-sm font-bold transition-colors">Đã hoàn thành</button>
             </div>
-            <div>
-              <label class="block text-sm font-bold text-slate-700 mb-1">Hạn chót</label>
-              <input v-model="formTask.deadline" type="date" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
-            </div>
-          </div>
 
-          <div class="border-t border-slate-100 pt-3">
-            <label class="block text-sm font-bold text-slate-700 mb-1">Độ ưu tiên</label>
-            <select v-model="formTask.priority" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-              <option value="LOW">Thấp</option>
-              <option value="MEDIUM">Trung bình</option>
-              <option value="HIGH">Cao</option>
+            <div class="h-6 w-px bg-slate-300 mx-2 hidden md:block"></div>
+            
+            <select v-model="sortBy" class="bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold outline-none focus:border-blue-500 cursor-pointer ml-auto">
+              <option value="deadline">⏳ Gần hạn chót nhất</option>
+              <option value="priority">🔥 Ưu tiên cao nhất</option>
+              <option value="newest">🕒 Mới cập nhật</option>
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1">Chú thích</label>
-            <textarea v-model="formTask.notes" rows="2" class="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ghi chú thêm..."></textarea>
+          <div v-if="loading" class="text-center py-20">
+            <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-slate-400 font-bold tracking-widest uppercase text-xs">Đang lấy dữ liệu công việc...</p>
+          </div>
+          
+          <div v-else-if="filteredTasks.length === 0" class="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+            <div class="text-6xl mb-4 opacity-50">🌴</div>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">Không có công việc nào</h3>
+            <p class="text-slate-500 text-sm">Bạn đã xử lý xong hết mọi việc hoặc không tìm thấy kết quả.</p>
           </div>
 
-          <div class="pt-4 flex justify-end gap-3 border-t">
-            <button type="button" @click="showModal = false" class="px-5 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-all">Hủy</button>
-            <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-all">
-              {{ isSubmitting ? 'Đang lưu...' : 'Lưu công việc' }}
-            </button>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div v-for="task in paginatedTasks" :key="task.id" class="bg-white rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all duration-300 relative overflow-hidden group cursor-pointer flex flex-col h-[240px]" :class="getCardBorder(task.status)">
+              
+              <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="getPriorityColor(task.priority)"></div>
+
+              <div class="flex justify-between items-start mb-3 pl-2">
+                <div class="flex items-center space-x-2 max-w-[65%]">
+                  <span class="text-lg">📁</span>
+                  <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate">{{ task.projectName }}</span>
+                </div>
+                <span class="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg shadow-sm" :class="getStatusBadge(task.status)">
+                  {{ formatStatus(task.status) }}
+                </span>
+              </div>
+
+              <div class="pl-2 flex-1">
+                <h3 class="text-lg font-extrabold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors" :title="task.title">{{ task.title }}</h3>
+                <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">{{ task.description || 'Không có mô tả chi tiết.' }}</p>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center pl-2">
+                <div class="flex items-center text-xs font-bold" :class="getDeadlineClass(task.endDate, task.status)">
+                  <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  {{ formatDate(task.endDate) }}
+                  <span v-if="isOverdue(task.endDate) && task.status !== 'DONE'" class="ml-2 bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[8px] uppercase">Trễ hạn</span>
+                </div>
+                
+                <div class="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                  <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ưu tiên:</span>
+                  <span class="text-[10px] font-black uppercase" :class="getTextPriorityColor(task.priority)">{{ formatPriority(task.priority) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </form>
+
+          <div v-if="totalPages > 1" class="mt-10 flex justify-center items-center space-x-2">
+            <button @click="currentPage--" :disabled="currentPage === 1" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-all shadow-sm">Trước</button>
+            <div class="flex space-x-1.5">
+              <button v-for="page in totalPages" :key="page" @click="currentPage = page" class="w-11 h-11 rounded-xl font-black text-sm transition-all shadow-sm flex items-center justify-center" :class="currentPage === page ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'">
+                {{ page }}
+              </button>
+            </div>
+            <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-all shadow-sm">Sau</button>
+          </div>
+
+        </div>
       </div>
-    </div>
 
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
-import { taskApi } from '../api/taskApi';
+import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 
-// ==========================================
-// 1. DỮ LIỆU TỪ ĐIỂN (USER & PROJECT)
-// ==========================================
-
-const mockProjects = ref([
-  { id: 1, name: 'Website TeamWork' },
-  { id: 2, name: 'App Bán hàng' },
-  { id: 3, name: 'Hệ thống Quản lý Sinh viên' }
-]);
-
-const getProject = (id) => {
-  return mockProjects.value.find(p => p.id === id) || { name: 'Không xác định' };
+// Lệnh Click outside cho dropdown
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) binding.value(event, el);
+    };
+    document.body.addEventListener('click', el.clickOutsideEvent);
+  },
+  unmounted(el) { document.body.removeEventListener('click', el.clickOutsideEvent); }
 };
 
-const mockUsers = ref([
-  { id: 1, name: 'Minh Khang', color: 'bg-indigo-100 text-indigo-700' },
-  { id: 2, name: 'Thu Thảo', color: 'bg-pink-100 text-pink-700' },
-  { id: 3, name: 'Hoàng Long', color: 'bg-emerald-100 text-emerald-700' },
-  { id: 4, name: 'Admin', color: 'bg-amber-100 text-amber-700' }
-]);
+const router = useRouter();
 
-const getUser = (id) => {
-  return mockUsers.value.find(u => u.id === id) || { name: 'Unknown', color: 'bg-slate-100 text-slate-500' };
-};
+const currentUser = ref("Khách");
+const firstLetter = ref("K");
+const loading = ref(true);
 
-// ==========================================
-// 2. KHAI BÁO BIẾN DỮ LIỆU
-// ==========================================
 const tasks = ref([]);
-const isLoading = ref(true);
-const isSubmitting = ref(false);
+const searchQuery = ref("");
+const filterStatus = ref("ALL");
+const sortBy = ref("deadline");
 
-const showModal = ref(false);
-const isEditing = ref(false);
-const editId = ref(null);
+// Thông báo
+const unreadCount = ref(0);
+const showNotifMenu = ref(false);
+const toggleNotifMenu = () => { showNotifMenu.value = !showNotifMenu.value; };
 
-const searchQuery = ref('');
-const sortBy = ref('default'); 
-const filterStatus = ref('ALL'); 
-const filterProject = ref('ALL'); // <-- BIẾN MỚI: Dùng để hứng giá trị chọn Dự án
-
-const formTask = ref({ title: '', projectId: '', priority: 'MEDIUM', progress: 'TODO', assignee: '', deadline: '', notes: '' });
-
-const formatStatus = (status) => {
-  const map = { 'TODO': 'Chưa bắt đầu', 'IN_PROGRESS': 'Đang làm', 'DONE': 'Hoàn thành', 'CANCEL': 'Đã hủy' };
-  return map[status] || status;
-};
-
-// ==========================================
-// 3. HÀM GỌI API (GET DATABASE)
-// ==========================================
-const fetchTasks = async () => {
-  isLoading.value = true;
-  try { 
-    tasks.value = await taskApi.getAllTasks(); 
-  } catch (error) { 
-    console.error("Lỗi khi tải dữ liệu:", error); 
-  } finally { 
-    isLoading.value = false; 
-  }
-};
-
-// ==========================================
-// 4. LOGIC LỌC, SẮP XẾP & PHÂN TRANG
-// ==========================================
+// Phân trang
 const currentPage = ref(1);
-const tasksPerPage = 5;
+const itemsPerPage = ref(9);
 
-// Khi người dùng đổi bộ lọc dự án, trạng thái, hoặc tìm kiếm -> tự reset về trang 1
-watch([searchQuery, filterStatus, filterProject, sortBy], () => { currentPage.value = 1; });
+onMounted(() => {
+  const storedUser = localStorage.getItem("username");
+  if (storedUser) {
+    currentUser.value = storedUser;
+    firstLetter.value = storedUser.charAt(0).toUpperCase();
+  }
+  fetchMyTasks();
+});
 
-const filteredAndSortedTasks = computed(() => {
-  let result = tasks.value;
-  
-  // 1. Lọc theo tìm kiếm tên
-  if (searchQuery.value) {
-    result = result.filter(t => t.title.toLowerCase().includes(searchQuery.value.toLowerCase()));
-  }
-  
-  // 2. Lọc theo Trạng thái
-  if (filterStatus.value !== 'ALL') {
-    result = result.filter(t => t.progress === filterStatus.value);
-  }
+const handleLogout = () => {
+  localStorage.clear();
+  router.push("/");
+};
 
-  // 3. LỌC THEO DỰ ÁN (MỚI THÊM)
-  if (filterProject.value !== 'ALL') {
-    // So sánh projectId của task với id của dự án đang chọn
-    result = result.filter(t => t.projectId === Number(filterProject.value));
+// 🟢 GIẢ LẬP DỮ LIỆU HOẶC GỌI API THỰC TẾ
+// 🟢 GỌI API THỰC TẾ
+const fetchMyTasks = async () => {
+  loading.value = true;
+  try {
+    // 1. MỞ KHÓA CODE GỌI API
+    const userId = localStorage.getItem("userId");
+    const response = await fetch(`http://localhost:8080/api/tasks/my-tasks`, { 
+      headers: { "User-ID": userId } 
+    });
+    
+    if (response.ok) {
+        tasks.value = await response.json();
+    } else {
+        console.error("Lỗi lấy dữ liệu từ Server");
+    }
+    
+    loading.value = false;
+    
+    // 2. XÓA BỎ ĐOẠN DỮ LIỆU GIẢ LẬP (setTimeout) CHỖ NÀY ĐI NHÉ!
+    
+  } catch (error) {
+    console.error("Lỗi:", error);
+    loading.value = false;
   }
-  
-  // 4. Sắp xếp
-  if (sortBy.value === 'deadline') {
-    result.sort((a, b) => (!a.deadline ? 1 : !b.deadline ? -1 : new Date(a.deadline) - new Date(b.deadline)));
-  } else if (sortBy.value === 'priority') {
-    const w = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
-    result.sort((a, b) => (w[b.priority] || 0) - (w[a.priority] || 0));
-  }
-  
+};
+
+// --- LOGIC TÍNH TOÁN & LỌC ---
+const taskStats = computed(() => {
+  return {
+    total: tasks.value.length,
+    inProgress: tasks.value.filter(t => t.status === 'IN_PROGRESS').length,
+    done: tasks.value.filter(t => t.status === 'DONE').length
+  };
+});
+
+const filteredTasks = computed(() => {
+  let result = tasks.value.filter(t => {
+    // 1. Lọc theo chữ tìm kiếm
+    const searchStr = searchQuery.value.toLowerCase();
+    const matchSearch = t.title.toLowerCase().includes(searchStr) || t.projectName.toLowerCase().includes(searchStr);
+    
+    // 2. Lọc theo trạng thái
+    const matchStatus = filterStatus.value === 'ALL' || t.status === filterStatus.value;
+    
+    return matchSearch && matchStatus;
+  });
+
+  // Sắp xếp
+  result.sort((a, b) => {
+    if (sortBy.value === 'deadline') {
+      return new Date(a.endDate) - new Date(b.endDate); // Gần hạn chót lên đầu
+    } else if (sortBy.value === 'priority') {
+      const pMap = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+      return pMap[b.priority] - pMap[a.priority]; // Ưu tiên cao lên đầu
+    }
+    return b.id - a.id; // Mới nhất lên đầu
+  });
+
   return result;
 });
 
-const totalPages = computed(() => Math.ceil(filteredAndSortedTasks.value.length / tasksPerPage));
+const totalPages = computed(() => Math.ceil(filteredTasks.value.length / itemsPerPage.value) || 1);
+
 const paginatedTasks = computed(() => {
-  const startIndex = (currentPage.value - 1) * tasksPerPage;
-  return filteredAndSortedTasks.value.slice(startIndex, startIndex + tasksPerPage);
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  return filteredTasks.value.slice(start, start + itemsPerPage.value);
 });
 
-const goToPage = (page) => { currentPage.value = page; };
-const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++; };
-const goToLastPage = () => { currentPage.value = totalPages.value; };
+watch([searchQuery, filterStatus, sortBy], () => { currentPage.value = 1; });
 
-// ==========================================
-// 5. CÁC HÀM XỬ LÝ NÚT BẤM
-// ==========================================
-const openCreateModal = () => {
-  isEditing.value = false;
-  formTask.value = { title: '', projectId: '', priority: 'MEDIUM', progress: 'TODO', assignee: '', deadline: '', notes: '' };
-  showModal.value = true;
+// --- FORMATTERS ---
+const formatDate = (dateStr) => {
+  if (!dateStr || dateStr === 'null') return 'Chưa có hạn';
+  const [year, month, day] = dateStr.split('-');
+  return (year && month && day) ? `${day}/${month}/${year}` : dateStr;
 };
 
-const openEditModal = (task) => {
-  isEditing.value = true;
-  editId.value = task.id;
-  formTask.value = { 
-    ...task, 
-    deadline: task.deadline ? task.deadline.split(' ')[0] : '' 
-  };
-  showModal.value = true;
+const isOverdue = (dateStr) => {
+  if (!dateStr || dateStr === 'null') return false;
+  return new Date(dateStr) < new Date(new Date().setHours(0,0,0,0));
 };
 
-const handleSubmit = async () => {
-  isSubmitting.value = true;
-  try {
-    if (isEditing.value) await taskApi.updateTask(editId.value, formTask.value);
-    else await taskApi.createTask(formTask.value);
-    
-    showModal.value = false;
-    currentPage.value = 1; 
-    await fetchTasks(); 
-  } catch (error) { 
-    alert("Có lỗi xảy ra khi gọi Server!"); 
-  } finally { 
-    isSubmitting.value = false; 
-  }
+const formatStatus = (status) => {
+  const map = { 'TODO': 'Cần làm', 'IN_PROGRESS': 'Đang thực hiện', 'DONE': 'Đã hoàn thành', 'CANCELED': 'Đã hủy' };
+  return map[status] || status;
 };
 
-const handleDeleteTask = async (id) => {
-  if (confirm("⚠️ Bạn có chắc chắn muốn xóa công việc này không?")) {
-    try {
-      await taskApi.deleteTask(id);
-      if (paginatedTasks.value.length === 1 && currentPage.value > 1) currentPage.value--;
-      await fetchTasks();
-    } catch (error) { 
-      alert("❌ Có lỗi xảy ra khi xóa!"); 
-    }
-  }
+const formatPriority = (priority) => {
+  const map = { 'HIGH': 'Cao', 'MEDIUM': 'Trung bình', 'LOW': 'Thấp' };
+  return map[priority] || priority;
 };
 
-onMounted(() => {
-  fetchTasks();
-});
+// --- GIAO DIỆN COLORS ---
+const getPriorityColor = (priority) => {
+  if (priority === 'HIGH') return 'bg-red-500';
+  if (priority === 'MEDIUM') return 'bg-orange-500';
+  return 'bg-blue-500';
+};
+
+const getTextPriorityColor = (priority) => {
+  if (priority === 'HIGH') return 'text-red-500';
+  if (priority === 'MEDIUM') return 'text-orange-500';
+  return 'text-blue-500';
+};
+
+const getStatusBadge = (status) => {
+  if (status === 'TODO') return 'bg-blue-100 text-blue-600 border border-blue-200';
+  if (status === 'IN_PROGRESS') return 'bg-orange-100 text-orange-600 border border-orange-200';
+  if (status === 'DONE') return 'bg-emerald-100 text-emerald-600 border border-emerald-200';
+  if (status === 'CANCELED') return 'bg-slate-100 text-slate-500 border border-slate-200';
+};
+
+const getCardBorder = (status) => {
+  if (status === 'DONE') return 'border-emerald-100 hover:border-emerald-300 bg-emerald-50/10';
+  if (status === 'CANCELED') return 'border-slate-200 hover:border-slate-300 opacity-70';
+  return 'border-slate-200 hover:border-blue-300';
+};
+
+const getDeadlineClass = (dateStr, status) => {
+  if (status === 'DONE' || status === 'CANCELED') return 'text-slate-400';
+  if (isOverdue(dateStr)) return 'text-red-600';
+  return 'text-slate-600';
+};
 </script>
 
 <style scoped>
-.animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>

@@ -19,6 +19,9 @@
         <router-link to="/tasks" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
           <span>☑️</span><span>Công việc của tôi</span>
         </router-link>
+        <router-link to="/account" class="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-xl font-semibold text-slate-400 hover:text-white transition-all">
+          <span>👤</span><span>Tài khoản</span>
+        </router-link>
       </nav>
       <div class="p-6">
         <button @click="handleLogout" class="w-full flex items-center justify-center py-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 font-bold rounded-xl transition-all">

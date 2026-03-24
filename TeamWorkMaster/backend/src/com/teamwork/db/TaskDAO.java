@@ -402,6 +402,57 @@ public class TaskDAO {
         return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
     }
 
+    // ==========================================
+    // 🟢 HÀM MỚI: LẤY DANH SÁCH CÔNG VIỆC CỦA TÔI (MY TASKS) 🟢
+    // ==========================================
+    public String getMyTasks(int userId) {
+        StringBuilder json = new StringBuilder("[");
+
+        // Truy vấn lấy Task, join với Bảng Dự án để lấy tên,
+        // và đếm số lượng Subtask (Checklist) để làm thanh Tiến độ
+        String sql = "SELECT t.ID, t.Title, t.Description, t.Priority, t.Deadline AS EndDate, t.Status, " +
+                "p.ProjectName, " +
+                "(SELECT COUNT(*) FROM TBL_SUBTASKS st WHERE st.TaskID = t.ID) AS TotalTasks, " +
+                "(SELECT COUNT(*) FROM TBL_SUBTASKS st WHERE st.TaskID = t.ID AND st.IsCompleted = 1) AS CompletedTasks "
+                +
+                "FROM TBL_TASKS t " +
+                "JOIN TBL_PROJECTS p ON t.ProjectID = p.ID " +
+                "JOIN TBL_TASK_ASSIGNEES ta ON t.ID = ta.TaskID " +
+                "WHERE ta.UserID = ? " +
+                "ORDER BY t.Deadline ASC";
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            boolean first = true;
+
+            while (rs.next()) {
+                if (!first)
+                    json.append(",");
+
+                String endDate = rs.getString("EndDate");
+
+                json.append("{")
+                        .append("\"id\":").append(rs.getInt("ID")).append(",")
+                        .append("\"title\":\"").append(escapeJson(rs.getString("Title"))).append("\",")
+                        .append("\"description\":\"").append(escapeJson(rs.getString("Description"))).append("\",")
+                        .append("\"projectName\":\"").append(escapeJson(rs.getString("ProjectName"))).append("\",")
+                        .append("\"priority\":\"").append(rs.getString("Priority")).append("\",")
+                        .append("\"status\":\"").append(rs.getString("Status")).append("\",")
+                        .append("\"endDate\":\"").append(endDate != null ? endDate : "null").append("\",")
+                        .append("\"totalTasks\":").append(rs.getInt("TotalTasks")).append(",")
+                        .append("\"completedTasks\":").append(rs.getInt("CompletedTasks"))
+                        .append("}");
+                first = false;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return json.append("]").toString();
+    }
+
 
     
 }
