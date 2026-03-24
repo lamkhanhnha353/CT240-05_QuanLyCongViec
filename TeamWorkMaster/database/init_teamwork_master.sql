@@ -144,4 +144,78 @@ CREATE TABLE TBL_MEETINGS (
 -- Thêm Admin mặc định
 INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
 VALUES ('admin', '123456', 'Quản Trị Viên', 'admin@teamwork.com', 'ADMIN');
+USE teamwork_master;
+
+INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
+VALUES ('nhakhanh', '123456', 'Nhã Khanh', 'lamkhanhnha353@gmail.com', 'MEMBER');
+
+INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
+VALUES ('nva123', '123456', 'Nguyễn Văn A', 'nhakhanhlam20@gmail.com', 'MEMBER');
+
+INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
+VALUES ('goku', '123456', 'Son Goku', 'lamkhanhnha2005@gmail.com', 'MEMBER');
+
+select * from TBL_USERS;
+
+
+USE teamwork_master;
+ALTER TABLE TBL_TASKS
+ADD COLUMN StartDate DATE NULL AFTER Deadline,
+ADD COLUMN Tags VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci AFTER StartDate;
+
+
+-- Tạo bảng trung gian để lưu danh sách người thực hiện cho từng công việc
+USE teamwork_master;
+CREATE TABLE TBL_TASK_ASSIGNEES (
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    AssignedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (TaskID, UserID),
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- 2. Tạo bảng mới chuẩn xác 100%
+
+-- Bạn mở MySQL và chạy dòng lệnh này để bảng Bình luận có chỗ lưu cái Link ảnh 
+ALTER TABLE TBL_COMMENTS ADD COLUMN FileUrl VARCHAR(500) NULL AFTER Content;
+
+
+-- 23/03/2026    16h00
+USE teamwork_master;
+-- bảng ghi lại số checklist trong task
+CREATE TABLE TBL_SUBTASKS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    Title VARCHAR(255) NOT NULL,
+    IsCompleted BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ghi lại lịch sử chuyển đổi trạng thái công việc
+USE teamwork_master;
+CREATE TABLE TBL_TASK_LOGS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    Action VARCHAR(255) NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- kéo thả theo ý muốn
+USE teamwork_master;
+ALTER TABLE TBL_TASKS ADD COLUMN OrderIndex INT DEFAULT 0 AFTER Status;
+
+-- Tài liệu đính kèm
+CREATE TABLE TBL_TASK_ATTACHMENTS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FileUrl VARCHAR(500) NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
