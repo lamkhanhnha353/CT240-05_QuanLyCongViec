@@ -50,7 +50,7 @@
         <div class="bg-slate-200/50 dark:bg-[#1e293b]/50 rounded-2xl p-3 pb-4 flex-1 min-h-0 overflow-y-auto flex flex-col border border-slate-200/60 dark:border-slate-700/60 shadow-inner custom-scrollbar">
           <draggable v-model="boardTasks[column.id]" group="tasks" item-key="id" @change="onTaskMoved($event, column.id)" class="flex-1 min-h-[100px] space-y-3" ghost-class="opacity-40" drag-class="cursor-grabbing" :animation="200">
             <template #item="{ element }">
-              <div v-show="matchFilter(element)" @click="openEditModal(element)" class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group" :class="getPriorityBorder(element.priority)">
+              <div v-show="matchFilter(element)" @click="openEditModal(element)" class="task-card bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border-l-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all relative group" :class="getPriorityBorder(element.priority)">
                 
                 <div class="flex justify-between items-start mb-2">
                   <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md shadow-sm" :class="getPriorityTag(element.priority)">{{ formatPriority(element.priority) }}</span>
@@ -62,7 +62,8 @@
                   </span>
                 </div>
                 
-                <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1 leading-snug pr-2" :class="column.id === 'CANCEL' ? 'line-through opacity-70' : ''">{{ element.title }}</h4>
+                <h4 class="task-card-title font-bold text-slate-800 dark:text-white text-sm mb-1 leading-snug pr-2" :class="column.id === 'CANCEL' ? 'line-through opacity-70' : ''">{{ element.title }}</h4>
+                
                 <div v-if="element.tags" class="flex flex-wrap gap-1.5 mb-2 mt-1">
                   <span v-for="(tag, idx) in getTagsArray(element.tags)" :key="idx" class="px-2 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shadow-sm" :class="getTagColor(tag)">{{ tag }}</span>
                 </div>

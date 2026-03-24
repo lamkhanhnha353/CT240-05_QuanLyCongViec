@@ -7,8 +7,9 @@ import java.sql.ResultSet;
 
 public class TaskActionNotifier {
 
-    // 💥 1. CÓ VIỆC MỚI TỚI TAY
-    public static void notifyNewTask(String projectName, String taskTitle, String assigneeIds, String assignerName) {
+    // 💥 1. CÓ VIỆC MỚI TỚI TAY (🟢 Đã thêm tham số int projectId)
+    public static void notifyNewTask(int projectId, String projectName, String taskTitle, String assigneeIds,
+            String assignerName) {
         if (assigneeIds == null || assigneeIds.trim().isEmpty() || assigneeIds.equals("null"))
             return;
 
@@ -20,7 +21,7 @@ public class TaskActionNotifier {
                 + "Vui lòng truy cập hệ thống và bắt đầu thực hiện nhé.\n\n"
                 + "Trân trọng,\nTeamwork Master System.";
 
-        sendToAssignees(assigneeIds, subject, message);
+        sendToAssignees(assigneeIds, subject, message, projectId);
     }
 
     // 💥 2. BÁO CÁO HOÀN THÀNH
@@ -38,11 +39,10 @@ public class TaskActionNotifier {
 
                         if (ownerId == completerId) {
                             System.out.println(
-                                    "➡️ [Email-Thread] Người làm xong chính là Sếp. Đã tự biết, bỏ qua việc gửi mail!");
+                                    "➡️ [Email-Thread] Người làm xong chính là Sếp. Đã tự biết, bỏ qua việc báo cáo!");
                             return;
                         }
 
-                        String ownerEmail = rs.getString("Email");
                         String ownerName = rs.getString("FullName");
                         String projectName = rs.getString("ProjectName");
 
@@ -54,7 +54,8 @@ public class TaskActionNotifier {
                                 + "Bạn có thể vào hệ thống để kiểm tra nghiệm thu.\n\n"
                                 + "Trân trọng,\nTeamwork Master System.";
 
-                        EmailService.sendEmail(ownerEmail, subject, message);
+                        // 🟢 Gọi qua hàm sendToAssignees để vừa Lưu Chuông Web, vừa Gửi Mail cho Sếp
+                        sendToAssignees(String.valueOf(ownerId), subject, message, projectId);
                     }
                 }
             }
@@ -63,8 +64,8 @@ public class TaskActionNotifier {
         }
     }
 
-    // 💥 3. LÉN ĐỔI DEADLINE
-    public static void notifyDeadlineChanged(String projectName, String taskTitle, String assigneeIds,
+    // 💥 3. LÉN ĐỔI DEADLINE (🟢 Đã thêm tham số int projectId)
+    public static void notifyDeadlineChanged(int projectId, String projectName, String taskTitle, String assigneeIds,
             String oldDeadline, String newDeadline, String changerName) {
         if (assigneeIds == null || assigneeIds.trim().isEmpty() || assigneeIds.equals("null"))
             return;
@@ -80,26 +81,36 @@ public class TaskActionNotifier {
                 + "Vui lòng chú ý thời gian để hoàn thành đúng tiến độ nhé!\n\n"
                 + "Trân trọng,\nTeamwork Master System.";
 
-        sendToAssignees(assigneeIds, subject, message);
+        sendToAssignees(assigneeIds, subject, message, projectId);
     }
 
     // ==========================================
-    // 🟢 ĐÃ FIX LỖI: Gom truy vấn DB vào BÊN TRONG vòng lặp
+    // 🟢 HÀM XỬ LÝ LƯU DATABASE VÀ GỬI MAIL (ĐÃ NÂNG CẤP)
     // ==========================================
-    private static void sendToAssignees(String assigneeIds, String subject, String message) {
+    private static void sendToAssignees(String assigneeIds, String subject, String message, int projectId) {
         String sql = "SELECT Email, FullName FROM TBL_USERS WHERE ID = ?";
         String[] ids = assigneeIds.split(",");
+
+        com.teamwork.db.NotificationDAO notifDAO = new com.teamwork.db.NotificationDAO();
 
         for (String idStr : ids) {
             if (idStr.trim().isEmpty())
                 continue;
 
-            // Lấy Statement MỚI TOANH cho từng người, gửi mail bao lâu cũng không sợ bị
-            // đóng!
+            int userId = Integer.parseInt(idStr.trim());
+
+            // 1. Lưu vào Database ngay lập tức để hiện Quả Chuông trên Web
+            try {
+                notifDAO.addNotification(userId, projectId, subject, message);
+            } catch (Exception e) {
+                System.err.println("❌ Lỗi lưu thông báo vào DB cho User ID: " + userId);
+            }
+
+            // 2. Mở luồng lấy thông tin và Gửi Email ngầm
             try {
                 Connection conn = DatabaseConnection.getInstance().getConnection();
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setInt(1, Integer.parseInt(idStr.trim()));
+                    pstmt.setInt(1, userId);
                     try (ResultSet rs = pstmt.executeQuery()) {
                         if (rs.next()) {
                             String email = rs.getString("Email");
@@ -108,13 +119,18 @@ public class TaskActionNotifier {
                             // Cá nhân hóa nội dung Email
                             String personalizedMessage = message.replace("Chào bạn", "Chào " + fullName);
 
-                            // Gọi hàm gửi mail (Sẽ tốn vài giây)
-                            EmailService.sendEmail(email, subject, personalizedMessage);
+                            // Chạy ngầm Gửi Mail để không làm chậm API
+                            new Thread(() -> {
+                                try {
+                                    EmailService.sendEmail(email, subject, personalizedMessage);
+                                } catch (Exception ignored) {
+                                }
+                            }).start();
                         }
                     }
                 }
             } catch (Exception e) {
-                System.err.println("❌ Lỗi khi gửi mail cho User ID: " + idStr);
+                System.err.println("❌ Lỗi khi lấy thông tin gửi mail cho User ID: " + userId);
                 e.printStackTrace();
             }
         }

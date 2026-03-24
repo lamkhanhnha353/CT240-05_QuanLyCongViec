@@ -35,6 +35,14 @@
           <span class="text-xl shrink-0">📹</span>
           <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Phòng Họp Nhóm</span>
         </button>
+
+        <button @click="currentTab = 'notifications'" class="w-full flex items-center py-3 rounded-xl font-bold transition-all group mt-2 relative" :class="[isSidebarOpen ? 'px-4' : 'justify-center px-0', currentTab === 'notifications' ? 'bg-orange-500 text-white shadow-lg shadow-orange-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white']">
+          <span class="text-xl shrink-0">🔔</span>
+          <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap flex-1 text-left">Thông Báo</span>
+          <span v-if="isSidebarOpen" class="ml-auto w-2 h-2 rounded-full bg-red-500"></span>
+          <span v-else class="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500"></span>
+        </button>
+
       </nav>
 
       <div class="p-4 border-t border-slate-800 space-y-2">
@@ -62,6 +70,9 @@
             <template v-if="currentTab === 'board'">{{ projectName }}</template>
             <template v-else-if="currentTab === 'statistics'">Thống kê: {{ projectName }}</template>
             <template v-else-if="currentTab === 'meeting'">Phòng Họp: {{ projectName }}</template>
+            
+            <template v-else-if="currentTab === 'notifications'">Thông Báo: {{ projectName }}</template>
+            
             <template v-else>Thảo Luận: {{ projectName }}</template>
           </h1>
           <span v-if="currentTab === 'board' || currentTab === 'statistics'" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold uppercase rounded-md border border-slate-200 dark:border-slate-600 shrink-0">{{ userRole }}</span>
@@ -83,12 +94,15 @@
       <KanbanBoard v-if="currentTab === 'board'" :projectId="projectId" :userRole="userRole" />
       <MeetingRoom v-if="currentTab === 'meeting'" :projectId="projectId" :projectName="projectName" :userRole="userRole" />
       <ProjectChat v-if="currentTab === 'chat'" :projectId="projectId" />
-
+      
+    <ProjectNotifications 
+        v-if="currentTab === 'notifications'" 
+        :projectId="parseInt(projectId)" 
+    />
     </main>
 
     <div v-if="isMemberSidebarOpen" @click="toggleMemberSidebar" class="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-sm z-40 transition-opacity"></div>
     <aside :class="isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'" class="fixed top-0 right-0 w-80 lg:w-96 h-screen bg-white dark:bg-slate-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out border-l border-slate-200 dark:border-slate-700 flex flex-col">
-      
       <div class="h-16 px-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-800/50">
         <h3 class="font-black text-slate-800 dark:text-white flex items-center">
           <span class="text-xl mr-2">👥</span> Quản lý Thành viên
@@ -99,7 +113,6 @@
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
-        
         <div>
           <h4 class="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center px-2">
             <span class="mr-2">👑</span> Ban Quản Trị ({{ managers.length }})
@@ -206,6 +219,10 @@ import ProjectStatistics from "@/components/ProjectStatistics.vue";
 import KanbanBoard from "@/components/KanbanBoard.vue";
 import MeetingRoom from "@/components/MeetingRoom.vue";
 import ProjectChat from "@/components/ProjectChat.vue";
+
+// 🟢 THÊM MỚI (4): IMPORT COMPONENT THÔNG BÁO VÀO 🟢
+import ProjectNotifications from "@/components/ProjectNotifications.vue"; 
+
 import { useToast } from "../composables/useToast";
 
 const vClickOutside = {
@@ -223,7 +240,6 @@ const userRole = ref(route.query.role || "MEMBER");
 const currentUserName = ref(localStorage.getItem("fullName") || "Bạn"); 
 const currentUserId = ref(localStorage.getItem("userId"));
 
-// 🟢 TRẢ LẠI TRẠNG THÁI BOARD LÀ DEFAULT 🟢
 const currentTab = ref('board'); 
 const isSidebarOpen = ref(true);
 const isDarkMode = ref(localStorage.getItem('theme') === 'dark');
@@ -331,6 +347,25 @@ onMounted(() => {
   else document.documentElement.classList.remove('dark');
   fetchProjectMembers();
 });
+
+// Thêm hàm này vào phần script của file cha
+const handleOpenTaskFromNotification = (taskName) => {
+  // 1. Chuyển Tab về lại Bảng Công Việc (Kanban)
+  currentTab.value = 'board';
+  
+  // 2. Chờ Kanban load xong (khoảng 100ms) rồi dùng JavaScript cơ bản để giả lập click vào cái thẻ đó
+  setTimeout(() => {
+    // Tìm trên màn hình xem có thẻ Task nào chứa cái Tên đó không
+    const allTaskElements = document.querySelectorAll('.task-card-title'); // Tùy thuộc bạn đặt class tên task ở Kanban là gì
+    for(let el of allTaskElements) {
+       if(el.innerText.trim() === taskName.trim()) {
+          el.closest('.task-card').click(); // Giả lập click vào thẻ đó để mở Modal
+          break;
+       }
+    }
+  }, 300);
+};
+
 </script>
 
 <style scoped>

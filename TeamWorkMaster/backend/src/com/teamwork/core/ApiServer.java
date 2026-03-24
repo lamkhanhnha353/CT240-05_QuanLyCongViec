@@ -617,8 +617,7 @@ public class ApiServer {
             String uName = "Một quản lý";
             int projectId = 0;
 
-            try { // 🟢 ĐÃ FIX: Bỏ java.sql.Connection conn = ... ra khỏi ngoặc tròn để Java KHÔNG
-                  // tự đóng kết nối 🟢
+            try {
                 java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
 
                 String sql = "SELECT t.ProjectID, t.Deadline, p.ProjectName FROM TBL_TASKS t JOIN TBL_PROJECTS p ON t.ProjectID = p.ID WHERE t.ID=?";
@@ -661,15 +660,18 @@ public class ApiServer {
 
                 taskDAO.addTaskLog(taskId, currentUserId, "Đã cập nhật chi tiết công việc");
 
-                // 🟢 BẮN EMAIL
+                // 🟢 BẮN EMAIL VÀ LƯU THÔNG BÁO
                 String checkNewDl = (newDeadline == null || newDeadline.trim().isEmpty()) ? "null" : newDeadline;
                 if (!oldDeadline.equals(checkNewDl)) {
+                    final int fProjectId = projectId; // 🟢 Lấy Project ID
                     final String fProjectName = projectName;
                     final String fOldDl = oldDeadline;
                     final String fNewDl = checkNewDl;
                     final String fUName = uName;
                     new Thread(() -> {
-                        com.teamwork.plugins.TaskActionNotifier.notifyDeadlineChanged(fProjectName, title, assigneeIds,
+                        // 🟢 Truyền fProjectId vào hàm
+                        com.teamwork.plugins.TaskActionNotifier.notifyDeadlineChanged(fProjectId, fProjectName, title,
+                                assigneeIds,
                                 fOldDl, fNewDl, fUName);
                     }).start();
                 }
@@ -705,7 +707,7 @@ public class ApiServer {
         }
         try {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            int projectId = Integer.parseInt(extract(body, "projectId"));
+            int projectId = Integer.parseInt(extract(body, "projectId")); // Đã có Project ID ở đây
             String title = extract(body, "title");
             String assigneeIds = extract(body, "assigneeIds");
             String priority = extract(body, "priority").isEmpty() ? "MEDIUM" : extract(body, "priority");
@@ -717,11 +719,10 @@ public class ApiServer {
             if (taskDAO.createTask(projectId, title, extract(body, "description"), priority, extract(body, "deadline"),
                     extract(body, "startDate"), extract(body, "tags"), status, assigneeIds)) {
 
-                // 🟢 IN LOG RA TERMINAL ĐỂ NHẬN DIỆN LỖI 🟢
                 System.out.println("✅ [API-Task] Tạo thẻ thành công trong DB. Bắt đầu kích hoạt Email...");
                 System.out.println("👉 Giá trị assigneeIds nhận được từ Web: [" + assigneeIds + "]");
 
-                // 🟢 BẮN EMAIL: CÓ VIỆC MỚI
+                // 🟢 BẮN EMAIL VÀ LƯU THÔNG BÁO
                 new Thread(() -> {
                     try {
                         java.sql.Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -744,7 +745,9 @@ public class ApiServer {
                                     uName = rs2.getString("FullName");
                             }
                         }
-                        com.teamwork.plugins.TaskActionNotifier.notifyNewTask(pName, title, assigneeIds, uName);
+                        // 🟢 Truyền projectId vào hàm
+                        com.teamwork.plugins.TaskActionNotifier.notifyNewTask(projectId, pName, title, assigneeIds,
+                                uName);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
