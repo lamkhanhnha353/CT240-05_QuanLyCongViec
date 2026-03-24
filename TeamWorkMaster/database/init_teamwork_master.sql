@@ -20,7 +20,7 @@ CREATE TABLE TBL_USERS (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- 2. BẢNG DỰ ÁN (Đã gộp sẵn Cột Status mới và Cột Priority)
+-- 2. BẢNG DỰ ÁN
 -- =========================================================================
 CREATE TABLE TBL_PROJECTS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -36,24 +36,7 @@ CREATE TABLE TBL_PROJECTS (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- 3. BẢNG CÔNG VIỆC (TASKS)
--- =========================================================================
-CREATE TABLE TBL_TASKS (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    Title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    Description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-    Priority ENUM('LOW', 'MEDIUM', 'HIGH') DEFAULT 'MEDIUM',
-    Deadline DATE,
-    Status ENUM('TODO', 'IN_PROGRESS', 'DONE', 'CANCEL') DEFAULT 'TODO',
-    AssigneeID INT,
-    ProjectID INT NOT NULL,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (AssigneeID) REFERENCES TBL_USERS(ID) ON DELETE SET NULL,
-    FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =========================================================================
--- 4. BẢNG THÀNH VIÊN DỰ ÁN (Đã gộp sẵn cột InviteStatus)
+-- 3. BẢNG THÀNH VIÊN DỰ ÁN
 -- =========================================================================
 CREATE TABLE TBL_PROJECT_MEMBERS (
     ProjectID INT,
@@ -66,7 +49,7 @@ CREATE TABLE TBL_PROJECT_MEMBERS (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- 5. BẢNG TRẠNG THÁI CỘT KANBAN
+-- 4. BẢNG TRẠNG THÁI CỘT KANBAN
 -- =========================================================================
 CREATE TABLE TBL_STATUS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,7 +59,91 @@ CREATE TABLE TBL_STATUS (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- 6. BẢNG NHẬT KÝ HOẠT ĐỘNG
+-- 5. BẢNG CÔNG VIỆC (TASKS)
+-- =========================================================================
+CREATE TABLE TBL_TASKS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    Description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    Priority ENUM('LOW', 'MEDIUM', 'HIGH') DEFAULT 'MEDIUM',
+    Deadline DATE,
+    StartDate DATE NULL,
+    Tags VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    Status ENUM('TODO', 'IN_PROGRESS', 'DONE', 'CANCEL') DEFAULT 'TODO',
+    OrderIndex INT DEFAULT 0,
+    AssigneeID INT,
+    ProjectID INT NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (AssigneeID) REFERENCES TBL_USERS(ID) ON DELETE SET NULL,
+    FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 6. BẢNG NGƯỜI THỰC HIỆN CÔNG VIỆC (ASSIGNEES)
+-- =========================================================================
+CREATE TABLE TBL_TASK_ASSIGNEES (
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    AssignedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (TaskID, UserID),
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 7. BẢNG CHECKLIST CON (SUBTASKS)
+-- =========================================================================
+CREATE TABLE TBL_SUBTASKS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    Title VARCHAR(255) NOT NULL,
+    IsCompleted BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 8. BẢNG NHẬT KÝ HOẠT ĐỘNG CỦA CÔNG VIỆC (TASK LOGS)
+-- =========================================================================
+CREATE TABLE TBL_TASK_LOGS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    Action VARCHAR(255) NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 9. BẢNG TÀI LIỆU ĐÍNH KÈM (ATTACHMENTS)
+-- =========================================================================
+CREATE TABLE TBL_TASK_ATTACHMENTS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FileUrl VARCHAR(500) NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 10. BẢNG BÌNH LUẬN (COMMENTS)
+-- =========================================================================
+CREATE TABLE TBL_COMMENTS (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    TaskID INT NOT NULL,
+    UserID INT NOT NULL,
+    Content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    FileUrl VARCHAR(500) NULL, 
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
+    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================================
+-- 11. BẢNG NHẬT KÝ HOẠT ĐỘNG DỰ ÁN (PROJECT ACTIVITY LOGS)
 -- =========================================================================
 CREATE TABLE TBL_ACTIVITY_LOGS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -89,7 +156,7 @@ CREATE TABLE TBL_ACTIVITY_LOGS (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- 7. BẢNG THÔNG BÁO QUẢ CHUÔNG (MỚI THÊM VÀO THEO YÊU CẦU TRƯỚC ĐÓ)
+-- 12. BẢNG THÔNG BÁO (NOTIFICATIONS)
 -- =========================================================================
 CREATE TABLE TBL_NOTIFICATIONS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
@@ -103,28 +170,23 @@ CREATE TABLE TBL_NOTIFICATIONS (
     FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-	
-CREATE TABLE TBL_COMMENTS (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    TaskID INT NOT NULL,
-    UserID INT NOT NULL,
-    Content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
-    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+-- =========================================================================
+-- 13. BẢNG TIN NHẮN DỰ ÁN (CHAT)
+-- =========================================================================
 CREATE TABLE TBL_PROJECT_CHAT (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     ProjectID INT NOT NULL,
     UserID INT NOT NULL,
     Message TEXT,
-    FileUrl VARCHAR(500), -- Cột này dùng để lưu cái Link ảnh/file từ Cloudinary trả về
+    FileUrl VARCHAR(500), 
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE,
     FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =========================================================================
+-- 14. BẢNG CUỘC HỌP (MEETINGS)
+-- =========================================================================
 CREATE TABLE TBL_MEETINGS (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     ProjectID INT NOT NULL,
@@ -136,86 +198,13 @@ CREATE TABLE TBL_MEETINGS (
     EndTime TIMESTAMP NULL,
     FOREIGN KEY (ProjectID) REFERENCES TBL_PROJECTS(ID) ON DELETE CASCADE,
     FOREIGN KEY (HostID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================================
--- DỮ LIỆU MẪU BAN ĐẦU
+-- 🟢 DỮ LIỆU MẪU BAN ĐẦU (ĐÃ BĂM MẬT KHẨU BẰNG SHA-256)
 -- =========================================================================
--- Thêm Admin mặc định
+
+-- 1. TÀI KHOẢN ADMIN (Mật khẩu: 123456)
 INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
-VALUES ('admin', '123456', 'Quản Trị Viên', 'admin@teamwork.com', 'ADMIN');
-USE teamwork_master;
-
-INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
-VALUES ('nhakhanh', '123456', 'Nhã Khanh', 'lamkhanhnha353@gmail.com', 'MEMBER');
-
-INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
-VALUES ('nva123', '123456', 'Nguyễn Văn A', 'nhakhanhlam20@gmail.com', 'MEMBER');
-
-INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 
-VALUES ('goku', '123456', 'Son Goku', 'lamkhanhnha2005@gmail.com', 'MEMBER');
-
-select * from TBL_USERS;
-
-
-USE teamwork_master;
-ALTER TABLE TBL_TASKS
-ADD COLUMN StartDate DATE NULL AFTER Deadline,
-ADD COLUMN Tags VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci AFTER StartDate;
-
-
--- Tạo bảng trung gian để lưu danh sách người thực hiện cho từng công việc
-USE teamwork_master;
-CREATE TABLE TBL_TASK_ASSIGNEES (
-    TaskID INT NOT NULL,
-    UserID INT NOT NULL,
-    AssignedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (TaskID, UserID),
-    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
-    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
--- 2. Tạo bảng mới chuẩn xác 100%
-
--- Bạn mở MySQL và chạy dòng lệnh này để bảng Bình luận có chỗ lưu cái Link ảnh 
-ALTER TABLE TBL_COMMENTS ADD COLUMN FileUrl VARCHAR(500) NULL AFTER Content;
-
-
--- 23/03/2026    16h00
-USE teamwork_master;
--- bảng ghi lại số checklist trong task
-CREATE TABLE TBL_SUBTASKS (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    TaskID INT NOT NULL,
-    Title VARCHAR(255) NOT NULL,
-    IsCompleted BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ghi lại lịch sử chuyển đổi trạng thái công việc
-USE teamwork_master;
-CREATE TABLE TBL_TASK_LOGS (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    TaskID INT NOT NULL,
-    UserID INT NOT NULL,
-    Action VARCHAR(255) NOT NULL,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
-    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- kéo thả theo ý muốn
-USE teamwork_master;
-ALTER TABLE TBL_TASKS ADD COLUMN OrderIndex INT DEFAULT 0 AFTER Status;
-
--- Tài liệu đính kèm
-CREATE TABLE TBL_TASK_ATTACHMENTS (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
-    TaskID INT NOT NULL,
-    UserID INT NOT NULL,
-    FileName VARCHAR(255) NOT NULL,
-    FileUrl VARCHAR(500) NOT NULL,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (TaskID) REFERENCES TBL_TASKS(ID) ON DELETE CASCADE,
-    FOREIGN KEY (UserID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+VALUES ('admin', TO_BASE64(UNHEX(SHA2('123456TeamworkMaster@2026', 256))), 'Quản Trị Viên', 'admin@teamwork.com', 'ADMIN');
 

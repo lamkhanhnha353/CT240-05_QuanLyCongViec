@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import com.teamwork.utils.PasswordUtil; // 🟢 Nhúng tiện ích băm mật khẩu
 
 public class UserDAO {
 
@@ -13,7 +14,7 @@ public class UserDAO {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, username);
-            pstmt.setString(2, password);
+            pstmt.setString(2, PasswordUtil.hashPassword(password)); // 🟢 Băm mật khẩu để so sánh
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
@@ -35,7 +36,7 @@ public class UserDAO {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, username);
-            pstmt.setString(2, password);
+            pstmt.setString(2, PasswordUtil.hashPassword(password)); // 🟢 Băm mật khẩu khi lưu
             pstmt.setString(3, fullName);
             pstmt.setString(4, email);
             int rowsInserted = pstmt.executeUpdate();
@@ -79,7 +80,7 @@ public class UserDAO {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, username);
-            pstmt.setString(2, password);
+            pstmt.setString(2, PasswordUtil.hashPassword(password)); // 🟢 Băm mật khẩu khi Admin tạo mới
             pstmt.setString(3, fullName);
             pstmt.setString(4, email);
 
@@ -112,7 +113,7 @@ public class UserDAO {
             pstmt.setString(2, email);
 
             if (isChangePassword) {
-                pstmt.setString(3, newPassword);
+                pstmt.setString(3, PasswordUtil.hashPassword(newPassword)); // 🟢 Băm mật khẩu mới cập nhật
                 pstmt.setInt(4, id);
             } else {
                 pstmt.setInt(3, id);
@@ -252,7 +253,7 @@ public class UserDAO {
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, newPassword);
+            pstmt.setString(1, PasswordUtil.hashPassword(newPassword)); // 🟢 Băm mật khẩu khi đặt lại
             pstmt.setString(2, email);
 
             int rowsAffected = pstmt.executeUpdate();
@@ -290,13 +291,14 @@ public class UserDAO {
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmtCheck = conn.prepareStatement(checkSql)) {
             pstmtCheck.setInt(1, userId);
-            pstmtCheck.setString(2, oldPassword); // Kiểm tra Pass cũ
+            pstmtCheck.setString(2, PasswordUtil.hashPassword(oldPassword)); // 🟢 Băm mật khẩu cũ để so khớp với
+                                                                             // Database
             ResultSet rs = pstmtCheck.executeQuery();
 
             if (rs.next()) { // Nếu pass cũ đúng
                 String updateSql = "UPDATE TBL_USERS SET PasswordHash = ? WHERE ID = ?";
                 try (PreparedStatement pstmtUpdate = conn.prepareStatement(updateSql)) {
-                    pstmtUpdate.setString(1, newPassword);
+                    pstmtUpdate.setString(1, PasswordUtil.hashPassword(newPassword)); // 🟢 Băm mật khẩu mới khi đổi
                     pstmtUpdate.setInt(2, userId);
                     return pstmtUpdate.executeUpdate() > 0;
                 }
