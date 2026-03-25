@@ -60,8 +60,13 @@
                 <div v-if="notifications.length === 0" class="p-6 text-center text-slate-400 text-sm font-medium">
                   Bạn không có thông báo nào.
                 </div>
-                <div v-for="notif in notifications" :key="notif.id" class="p-4 border-b border-slate-50 transition-colors" :class="notif.isRead ? 'bg-white opacity-60' : 'bg-blue-50/50 hover:bg-blue-50'">
-                  <p class="text-sm font-bold text-slate-800 mb-1">{{ notif.title }}</p>
+                <div v-for="notif in notifications" :key="notif.id" class="p-4 border-b border-slate-50 transition-colors relative group" :class="notif.isRead ? 'bg-white opacity-60' : 'bg-blue-50/50 hover:bg-blue-50'">
+                  
+                  <button @click.stop="deleteNotif(notif.id)" class="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all" title="Xóa thông báo">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+
+                  <p class="text-sm font-bold text-slate-800 mb-1 pr-6">{{ notif.title }}</p>
                   <p class="text-xs text-slate-600 leading-relaxed mb-3">{{ notif.message }}</p>
                   
                   <div v-if="!notif.isRead">
@@ -336,6 +341,21 @@ const markAsRead = async (notifId) => {
     }
   } catch (error) {
     console.error("Lỗi cập nhật trạng thái thông báo", error);
+  }
+};
+
+const deleteNotif = async (notifId) => {
+  const userId = localStorage.getItem("userId");
+  try {
+    const response = await fetch(`http://localhost:8080/api/notifications/delete?id=${notifId}`, {
+      method: "DELETE",
+      headers: { "User-ID": userId }
+    });
+    if (response.ok) {
+      fetchNotifications(); // Cập nhật lại danh sách liền
+    }
+  } catch (error) {
+    console.error("Lỗi xóa thông báo", error);
   }
 };
 

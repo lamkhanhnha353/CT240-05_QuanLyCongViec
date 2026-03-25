@@ -86,4 +86,16 @@ public class NotificationDAO {
             e.printStackTrace();
         }
     }
+
+    public boolean deleteNotification(int notifId) {
+        String sql = "DELETE FROM TBL_NOTIFICATIONS WHERE ID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, notifId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

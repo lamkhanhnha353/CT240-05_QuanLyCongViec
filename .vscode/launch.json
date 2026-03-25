@@ -9,6 +9,13 @@
             "name": "DashboardFrame",
             "request": "launch",
             "mainClass": "com.teamwork.core.DashboardFrame",
+            "projectName": "CT240-05_QuanLyCongViec_e8b59985"
+        },
+        {
+            "type": "java",
+            "name": "DashboardFrame",
+            "request": "launch",
+            "mainClass": "com.teamwork.core.DashboardFrame",
             "projectName": "CT240-05_QuanLyCongViec_3ba42b55"
         },
         {
