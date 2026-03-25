@@ -5,8 +5,7 @@
       
       <div class="relative flex-1 w-full max-w-md">
         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">🔍</span>
-        <input v-model="searchQuery" type="text" placeholder="Tìm tên công việc..." class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />
-        
+            <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Tìm tên công việc (Ctrl+K)..." class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:border-blue-500 shadow-sm dark:text-white transition-all" />        
         <button @click="startVoiceSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center transition-colors focus:outline-none" :class="isListening ? 'text-red-500 animate-pulse' : 'text-slate-400 hover:text-blue-500'" title="Tìm kiếm bằng giọng nói">
           <svg v-if="!isListening" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
           <span v-else class="text-xl">🎙️</span>
@@ -319,9 +318,9 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import TaskCreateModal from "@/components/TaskCreateModal.vue";
 import TaskDetailModal from "@/components/TaskDetailModal.vue";
-import { ref, computed, onMounted, watch } from "vue";
 import draggable from "vuedraggable";
 import { useToast } from "../composables/useToast";
 
@@ -333,6 +332,7 @@ const searchQuery = ref("");
 const searchTag = ref("");
 const searchAssignee = ref("");
 const searchDeadline = ref(""); 
+const searchInput = ref(null);
 
 // 🟢 BIẾN CHO PANEL TRƯỢT & SẮP XẾP & GIỌNG NÓI 🟢
 const showFilters = ref(false);
@@ -555,7 +555,44 @@ const editTaskData = ref(null);
 const projectMembers = ref([]);
 const pendingMove = ref(null);
 
-onMounted(() => { fetchTasks(); fetchProjectMembers(); });
+// ==========================================
+// 🟢 XỬ LÝ PHÍM TẮT (KEYBOARD SHORTCUTS)
+// ==========================================
+const handleGlobalKeydown = (e) => {
+  // Bấm ESC: Đóng các loại form, popup và bỏ focus ô tìm kiếm
+  if (e.key === 'Escape') {
+    showTaskModal.value = false;
+    showEditModal.value = false;
+    showFilters.value = false;
+    if (pendingMove.value) cancelTaskMove(); // Nếu đang hiện bảng hỏi "Chuyển trạng thái?", bấm Esc sẽ hủy luôn
+    if (searchInput.value) searchInput.value.blur();
+    return;
+  }
+
+  // Ctrl + K hoặc phím / : Mở ô tìm kiếm (Chặn luôn Chrome)
+  if ((e.ctrlKey && e.key.toLowerCase() === 'k') || (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
+    e.preventDefault(); 
+    if (searchInput.value) searchInput.value.focus();
+    return;
+  }
+
+  // Alt + N : Bật form tạo công việc mới (Vào thẳng cột TODO)
+  if (e.altKey && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    openTaskModal('TODO');
+    return;
+  }
+};
+
+onMounted(() => { 
+  fetchTasks(); 
+  fetchProjectMembers(); 
+  window.addEventListener('keydown', handleGlobalKeydown); // Bật lắng nghe phím
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown); // Tắt lắng nghe phím khi thoát trang
+});
 
 const fetchTasks = async () => {
   try {

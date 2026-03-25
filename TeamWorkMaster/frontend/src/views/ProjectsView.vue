@@ -2,11 +2,12 @@
   <div class="min-h-screen bg-[#f8f9fa] flex font-sans">
     
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
-      <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg">T</div>
+      <div class="p-6 border-b border-slate-800 flex items-center space-x-3 shrink-0">
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/30 border border-blue-400/20">P</div>
+        
         <div>
-          <h2 class="text-xl font-black tracking-tighter">PROJECT ALPHA</h2>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Marketing Dept</p>
+          <h2 class="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">TEAMWORK</h2>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Master System</p>
         </div>
       </div>
       <nav class="flex-1 p-4 space-y-2">
@@ -38,7 +39,7 @@
         <div class="flex items-center space-x-6">
           <div class="relative flex items-center group">
             <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
-            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm dự án..." class="w-64 pl-10 pr-10 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+           <input ref="searchInput" v-model="searchQuery" type="text" placeholder="Tìm kiếm dự án (Ctrl+K)..." class="w-64 pl-10 pr-10 py-2 bg-slate-100 border-none rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
             <button @click="startVoiceSearch" class="absolute right-3 top-2 flex items-center transition-colors focus:outline-none" :class="isListening ? 'text-red-500 animate-pulse' : 'text-slate-400 hover:text-blue-500'" title="Tìm bằng giọng nói">
               <svg v-if="!isListening" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
               <span v-else class="text-lg">🎙️</span>
@@ -224,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import CreateProjectForm from "../components/CreateProjectForm.vue"; 
 import { useToast } from "../composables/useToast";
@@ -254,12 +255,13 @@ const isCreating = ref(false);
 const isEditMode = ref(false);
 const editData = ref(null);
 const searchQuery = ref("");
+const searchInput = ref(null);
 const starredProjects = ref([]);
 
 // VOICE SEARCH
 const isListening = ref(false);
 
-// THÔNG BÁO (Giữ nguyên của bạn)
+
 const notifications = ref([]);
 const showNotifMenu = ref(false);
 const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
@@ -280,6 +282,33 @@ const resetFilters = () => {
   currentPage.value = 1;
 };
 
+
+// XỬ LÝ PHÍM TẮT (KEYBOARD SHORTCUTS)
+
+const handleGlobalKeydown = (e) => {
+  // Bấm ESC: Đóng form tạo dự án & Menu thông báo
+  if (e.key === 'Escape') {
+    isCreating.value = false;
+    showNotifMenu.value = false;
+    if (searchInput.value) searchInput.value.blur(); 
+    return;
+  }
+
+  // Ctrl + K hoặc phím / : Mở ô tìm kiếm
+  if ((e.ctrlKey && e.key === 'k') || (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
+    e.preventDefault(); 
+    if (searchInput.value) searchInput.value.focus();
+    return;
+  }
+
+  // Alt + N : Bật form tạo dự án mới
+  if (e.altKey && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    openCreateForm();
+    return;
+  }
+};
+
 onMounted(() => {
   const storedUser = localStorage.getItem("username");
   if (storedUser) {
@@ -291,6 +320,27 @@ onMounted(() => {
   fetchProjects(); 
   fetchNotifications();
   setInterval(fetchNotifications, 10000); 
+});
+
+onMounted(() => {
+  const storedUser = localStorage.getItem("username");
+  if (storedUser) {
+    currentUser.value = storedUser;
+    firstLetter.value = storedUser.charAt(0).toUpperCase();
+    const storedStars = localStorage.getItem(`starred_${storedUser}`);
+    if (storedStars) starredProjects.value = JSON.parse(storedStars);
+  }
+  fetchProjects(); 
+  fetchNotifications();
+  setInterval(fetchNotifications, 10000); 
+
+  // Bật lắng nghe phím tắt khi vào trang
+  window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+// Tắt lắng nghe phím tắt khi chuyển sang trang khác (Chống lỗi bộ nhớ)
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 const startVoiceSearch = () => {
@@ -407,7 +457,7 @@ const filteredProjects = computed(() => {
   // 4. Sắp xếp (DỰ ÁN MỚI TẠO LÊN ĐẦU TIÊN KHI CHỌN 'NEWEST')
   result.sort((a, b) => {
     if (sortBy.value === 'newest') {
-      return b.id - a.id; // ID lớn hơn (mới hơn) nằm trên
+      return b.id - a.id; 
     } else if (sortBy.value === 'name_asc') {
       return a.name.localeCompare(b.name);
     } else if (sortBy.value === 'name_desc') {
@@ -419,7 +469,7 @@ const filteredProjects = computed(() => {
   return result;
 });
 
-// 🟢 PHÂN TRANG
+// PHÂN TRANG
 const totalPages = computed(() => Math.ceil(filteredProjects.value.length / itemsPerPage.value) || 1);
 
 const paginatedProjects = computed(() => {
@@ -454,7 +504,7 @@ const fetchProjects = async () => {
 
 const toggleMenu = (id) => { activeMenu.value = activeMenu.value === id ? null : id; };
 
-// 🟢 MỞ FORM (TẠO MỚI & SỬA) ĐÃ FIX LỖI KHÔNG SỬA ĐƯỢC
+//  MỞ FORM (TẠO MỚI & SỬA) ĐÃ FIX LỖI KHÔNG SỬA ĐƯỢC
 const openCreateForm = () => { 
   isEditMode.value = false; 
   editData.value = null; 
@@ -464,7 +514,7 @@ const openCreateForm = () => {
 const openEditForm = (project) => { 
   activeMenu.value = null; 
   isEditMode.value = true; 
-  // SAO CHÉP (CLONE) DATA TRÁNH LỖI REACTIVITY CỦA VUE GÂY LỖI SỬA
+ 
   editData.value = JSON.parse(JSON.stringify(project)); 
   isCreating.value = true; 
 };

@@ -2,11 +2,12 @@
   <div class="min-h-screen bg-[#f8f9fa] flex font-sans">
     
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0">
-      <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg">T</div>
+     <div class="p-6 border-b border-slate-800 flex items-center space-x-3 shrink-0">
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/30 border border-blue-400/20">P</div>
+        
         <div>
-          <h2 class="text-xl font-black tracking-tighter">PROJECT ALPHA</h2>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Marketing Dept</p>
+          <h2 class="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">TEAMWORK</h2>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Master System</p>
         </div>
       </div>
       <nav class="flex-1 p-4 space-y-2">
@@ -224,8 +225,8 @@ const handleLogout = () => {
   router.push("/");
 };
 
-// 🟢 GIẢ LẬP DỮ LIỆU HOẶC GỌI API THỰC TẾ
-// 🟢 GỌI API THỰC TẾ
+
+
 const fetchMyTasks = async () => {
   loading.value = true;
   try {
@@ -295,7 +296,6 @@ const paginatedTasks = computed(() => {
 
 watch([searchQuery, filterStatus, sortBy], () => { currentPage.value = 1; });
 
-// --- FORMATTERS ---
 const formatDate = (dateStr) => {
   if (!dateStr || dateStr === 'null') return 'Chưa có hạn';
   const [year, month, day] = dateStr.split('-');

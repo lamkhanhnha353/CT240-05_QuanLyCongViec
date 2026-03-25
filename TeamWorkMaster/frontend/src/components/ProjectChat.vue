@@ -79,9 +79,11 @@
           </button>
           <input type="file" ref="fileInputRef" @change="handleFileChange" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" />
 
-          <textarea 
-            v-model="newMessage" @keydown.enter.prevent="handleSend" rows="1"
-            placeholder="Nhập tin nhắn..." 
+         <textarea 
+            v-model="newMessage" 
+            @keydown.enter.exact.prevent="handleSend" 
+            rows="1"
+            placeholder="Nhập tin nhắn (Shift + Enter để xuống dòng)..." 
             class="flex-1 py-2 bg-transparent outline-none text-sm text-slate-800 dark:text-white resize-none custom-scrollbar" 
             style="min-height: 40px; max-height: 120px;"
           ></textarea>
@@ -274,8 +276,13 @@ const sharedLinks = computed(() => {
 
 const formatContentWithLinks = (text) => {
   if (!text) return "";
+  
+  // 1. Nhận diện Link và bọc thẻ <a>
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  return text.replace(urlRegex, '<a href="$1" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline break-all">$1</a>');
+  let formattedText = text.replace(urlRegex, '<a href="$1" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline break-all">$1</a>');
+  
+  // 2. Nhận diện cả DẤU XUỐNG DÒNG THẬT (\n) và CHỮ XUỐNG DÒNG ẢO (\\n) do Backend sinh ra
+  return formattedText.replace(/\\n/g, '<br />').replace(/\n/g, '<br />');
 };
 
 const triggerFileInput = () => { fileInputRef.value.click(); };
@@ -295,7 +302,7 @@ const cancelAttachment = () => {
   if (fileInputRef.value) fileInputRef.value.value = ""; 
 };
 
-// 🟢 ĐÃ CẬP NHẬT: GỌI BIẾN MÔI TRƯỜNG CHO CLOUDINARY
+// ĐÃ CẬP NHẬT: GỌI BIẾN MÔI TRƯỜNG CHO CLOUDINARY
 const uploadFileToCloudinary = async (file) => {
   const formData = new FormData();
   formData.append("file", file);

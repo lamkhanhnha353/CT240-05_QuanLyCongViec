@@ -52,7 +52,7 @@
           <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">{{ isDarkMode ? 'Chế độ Sáng' : 'Chế độ Tối' }}</span>
         </button>
         <button @click="handleLogout" class="w-full flex items-center py-3 rounded-xl font-bold text-red-400 hover:bg-red-500/10 transition-all" :class="isSidebarOpen ? 'px-4' : 'justify-center px-0'">
-          <span class="text-xl shrink-0">🚪</span>
+          <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
           <span v-if="isSidebarOpen" class="ml-3 whitespace-nowrap">Đăng xuất</span>
         </button>
       </div>
@@ -220,7 +220,7 @@ import KanbanBoard from "@/components/KanbanBoard.vue";
 import MeetingRoom from "@/components/MeetingRoom.vue";
 import ProjectChat from "@/components/ProjectChat.vue";
 
-// 🟢 THÊM MỚI (4): IMPORT COMPONENT THÔNG BÁO VÀO 🟢
+
 import ProjectNotifications from "@/components/ProjectNotifications.vue"; 
 
 import { useToast } from "../composables/useToast";
@@ -348,18 +348,18 @@ onMounted(() => {
   fetchProjectMembers();
 });
 
-// Thêm hàm này vào phần script của file cha
+
 const handleOpenTaskFromNotification = (taskName) => {
   // 1. Chuyển Tab về lại Bảng Công Việc (Kanban)
   currentTab.value = 'board';
   
   // 2. Chờ Kanban load xong (khoảng 100ms) rồi dùng JavaScript cơ bản để giả lập click vào cái thẻ đó
   setTimeout(() => {
-    // Tìm trên màn hình xem có thẻ Task nào chứa cái Tên đó không
-    const allTaskElements = document.querySelectorAll('.task-card-title'); // Tùy thuộc bạn đặt class tên task ở Kanban là gì
+  
+    const allTaskElements = document.querySelectorAll('.task-card-title'); 
     for(let el of allTaskElements) {
        if(el.innerText.trim() === taskName.trim()) {
-          el.closest('.task-card').click(); // Giả lập click vào thẻ đó để mở Modal
+          el.closest('.task-card').click();
           break;
        }
     }
