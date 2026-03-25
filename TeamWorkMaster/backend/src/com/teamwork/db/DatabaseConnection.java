@@ -22,7 +22,7 @@ public class DatabaseConnection {
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "123456";
+    private final String PASSWORD = "tmk1206";
 
     // 2. Constructor: Giờ chỉ cần nạp Driver 1 lần lúc bật Server
     private DatabaseConnection() {

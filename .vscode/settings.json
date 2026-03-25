@@ -5,7 +5,7 @@
   ],
   "java.project.sourcePaths": [
     "TeamWorkMaster/backend/src",
-    "TeamWorkMaster/frontend"
+    "TeamWorkMaster/backend/tests"
   ],
   "java.debug.settings.onBuildFailureProceed": true
 }
