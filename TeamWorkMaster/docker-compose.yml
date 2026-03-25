@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: teamwork_mysql
+    environment:
+      # Cài đặt mật khẩu gốc cho MySQL
+      MYSQL_ROOT_PASSWORD: "123456"
+      # Tên cơ sở dữ liệu mặc định
+      MYSQL_DATABASE: teamwork_master
+    ports:
+      # Ép Docker dùng cổng 3307 ở máy bạn, nối vào cổng 3306 của Docker
+      - "3307:3306"
+    volumes:
+      # Lấy file SQL của bạn nạp thẳng vào Database khi khởi động
+      - ./database/init_teamwork_master.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always

@@ -5,11 +5,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-/**
- * Lớp quản lý kết nối cơ sở dữ liệu MySQL.
- * 🟢 ĐÃ NÂNG CẤP: Hỗ trợ Đa luồng (Multi-threading). Mỗi luồng sẽ có một kết
- * nối riêng!
- */
 public class DatabaseConnection {
 
     // 1. Biến static lưu trữ thể hiện (instance) duy nhất của class này
@@ -20,12 +15,14 @@ public class DatabaseConnection {
 
     // CẤU HÌNH DATABASE
     private final String DB_NAME = "teamwork_master";
+
+    // 👉 ĐÃ CẬP NHẬT: Đổi cổng thành 3307 để trỏ thẳng vào MySQL trong Docker
     private final String URL = "jdbc:mysql://localhost:3306/" + DB_NAME + "?useUnicode=true&characterEncoding=UTF-8";
     private final String USER = "root";
 
     // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
     // MYSQL
-    private final String PASSWORD = "20022005nha@";
+    private final String PASSWORD = "123456";
 
     // 2. Constructor: Giờ chỉ cần nạp Driver 1 lần lúc bật Server
     private DatabaseConnection() {
