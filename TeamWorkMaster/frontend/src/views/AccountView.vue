@@ -2,11 +2,12 @@
   <div class="min-h-screen bg-[#f8f9fa] flex font-sans transition-all duration-300">
     
     <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl z-20 shrink-0 relative">
-      <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg">T</div>
+     <div class="p-6 border-b border-slate-800 flex items-center space-x-3 shrink-0">
+        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/30 border border-blue-400/20">P</div>
+        
         <div>
-          <h2 class="text-xl font-black tracking-tighter">PROJECT ALPHA</h2>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Marketing Dept</p>
+          <h2 class="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">TEAMWORK</h2>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Master System</p>
         </div>
       </div>
       <nav class="flex-1 p-4 space-y-2">
@@ -192,7 +193,7 @@ const router = useRouter();
 const showNotifMenu = ref(false);
 const toggleNotifMenu = () => { showNotifMenu.value = !showNotifMenu.value; };
 
-// Trạng thái Con mắt (Mở/Tắt)
+
 const showOld = ref(false);
 const showNew = ref(false);
 const showConfirm = ref(false);
