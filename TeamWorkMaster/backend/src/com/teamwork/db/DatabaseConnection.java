@@ -4,56 +4,79 @@ import com.teamwork.core.GlobalExceptionHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.io.FileInputStream;
+import java.util.Properties;
+import java.io.File;
 
 public class DatabaseConnection {
 
-    // 1. Biến static lưu trữ thể hiện (instance) duy nhất của class này
-    private static DatabaseConnection instance;
+    // 🟢 SỬA LỖI 1: THÊM "volatile" ĐỂ ĐẢM BẢO THREAD-SAFE (CHỐNG KẸT XE ĐA LUỒNG)
+    private static volatile DatabaseConnection instance;
 
-    // 🟢 ĐÃ XÓA BIẾN "private Connection connection;" ĐỂ KHÔNG DÙNG CHUNG KẾT NỐI
-    // NỮA
-
-    // CẤU HÌNH DATABASE
     private final String DB_NAME = "teamwork_master";
-
-    // 👉 ĐÃ CẬP NHẬT: Đổi cổng thành 3307 để trỏ thẳng vào MySQL trong Docker
     private final String URL = "jdbc:mysql://localhost:3306/" + DB_NAME + "?useUnicode=true&characterEncoding=UTF-8";
     private final String USER = "root";
 
-    // ⚠️ QUAN TRỌNG: BẠN HÃY ĐỔI "123456" THÀNH MẬT KHẨU ROOT MÀ BẠN ĐÃ ĐẶT LÚC CÀI
-    // MYSQL
-    private final String PASSWORD = "tmk1206";
+    // Mật khẩu mặc định an toàn (sẽ dùng nếu không tìm thấy file .env)
+    private String password = "";
 
-    // 2. Constructor: Giờ chỉ cần nạp Driver 1 lần lúc bật Server
     private DatabaseConnection() {
         try {
-            // Nạp Driver MySQL
             Class.forName("com.mysql.cj.jdbc.Driver");
             System.out.println("[HỆ THỐNG] Nạp thành công Driver MySQL đa luồng!");
+
+            // 🟢 SỬA LỖI 4: TỰ ĐỘNG ĐỌC MẬT KHẨU TỪ FILE .env
+            if (System.getenv("DB_PASSWORD") != null) {
+                this.password = System.getenv("DB_PASSWORD");
+                System.out.println("[BẢO MẬT] Đã lấy mật khẩu từ Biến môi trường Windows!");
+            } else {
+                try {
+                    Properties props = new Properties();
+
+                    // 🟢 CHIẾN THUẬT TÌM KIẾM THÔNG MINH (VS Code hay bị loạn thư mục gốc)
+                    File envFile = new File(".env"); // Lớp 1: Tìm ở ngay chỗ Java đang đứng
+                    if (!envFile.exists())
+                        envFile = new File("backend/.env"); // Lớp 2: Tìm sâu vào thư mục backend
+                    if (!envFile.exists())
+                        envFile = new File("TeamWorkMaster/backend/.env"); // Lớp 3: Tìm từ thư mục ngoài cùng
+
+                    if (envFile.exists()) {
+                        props.load(new FileInputStream(envFile));
+                        if (props.getProperty("DB_PASSWORD") != null) {
+                            this.password = props.getProperty("DB_PASSWORD");
+                            System.out.println("[BAO MAT] Da lay mat khau tu file .env tai: " + envFile.getPath());
+                        }
+                    } else {
+                        System.out.println("[BAO MAT] Khong tim thay file .env, dung mat khau mac dinh.");
+                    }
+                } catch (Exception e) {
+                    System.out.println("[BAO MAT] Loi doc file .env, dung mat khau mac dinh an toan.");
+                }
+            }
         } catch (ClassNotFoundException e) {
-            GlobalExceptionHandler.handle("DatabaseConnection",
-                    new Exception("Không tìm thấy Driver MySQL! Hãy kiểm tra lại file .jar trong thư mục lib."));
+            GlobalExceptionHandler.handle("DatabaseConnection", new Exception("Không tìm thấy Driver MySQL!"));
         }
     }
 
-    // 3. Hàm public static để lấy instance
+    // 🟢 SỬA LỖI 1: KỸ THUẬT DOUBLE-CHECKED LOCKING (CHUẨN ĐIỂM 10)
     public static DatabaseConnection getInstance() {
         if (instance == null) {
-            instance = new DatabaseConnection();
+            synchronized (DatabaseConnection.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnection();
+                }
+            }
         }
-        // 🟢 Đã bỏ đoạn check isClosed() rườm rà đi vì giờ không xài chung 1 ống nữa
         return instance;
     }
 
-    // 4. 🟢 ĐÃ SỬA: Mỗi lần gọi là tạo MỘT KẾT NỐI MỚI.
-    // Đảm bảo không bao giờ đụng hàng hay bị thằng khác đóng cửa giữa chừng!
+    // 🟢 ĐÃ SỬA: Mỗi lần gọi là cấp 1 kết nối mới (An toàn tuyệt đối)
     public Connection getConnection() {
         try {
-            return DriverManager.getConnection(URL, USER, PASSWORD);
+            return DriverManager.getConnection(URL, USER, this.password);
         } catch (SQLException e) {
-            GlobalExceptionHandler.handle("DatabaseConnection",
-                    new Exception("Lỗi kết nối CSDL (Sai mật khẩu hoặc MySQL chưa bật): " + e.getMessage()));
-            return null; // Phải return null nếu lỗi
+            GlobalExceptionHandler.handle("DatabaseConnection", new Exception("Lỗi kết nối CSDL: " + e.getMessage()));
+            return null;
         }
     }
 }

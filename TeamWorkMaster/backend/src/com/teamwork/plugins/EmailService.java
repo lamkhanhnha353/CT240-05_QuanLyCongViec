@@ -1,54 +1,101 @@
 package com.teamwork.plugins;
 
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.util.Scanner;
+import java.io.FileInputStream;
+import java.util.Properties;
+import java.io.File;
 
 public class EmailService {
 
-    // CHÚ Ý BẢO MẬT: Nhớ giữ kín mã này nhé!
-    private static final String API_KEY = "DA_XOA_DE_PUSH_GIT";
+    // 🟢 HÀM ĐỌC GIÁ TRỊ TỪ .env HOẶC HỆ THỐNG
+    private static String getEnvValue(String key) {
+        // Ưu tiên đọc từ biến môi trường hệ thống trước
+        if (System.getenv(key) != null) {
+            return System.getenv(key);
+        }
+        try {
+            Properties props = new Properties();
+            File envFile = new File(".env");
+            if (!envFile.exists())
+                envFile = new File("backend/.env");
+            if (!envFile.exists())
+                envFile = new File("TeamWorkMaster/backend/.env");
+
+            if (envFile.exists()) {
+                props.load(new FileInputStream(envFile));
+                return props.getProperty(key);
+            }
+        } catch (Exception e) {
+            System.out.println("[BẢO MẬT] Lỗi đọc file .env cho khóa: " + key);
+        }
+        return null;
+    }
 
     public static void sendEmail(String toEmail, String subject, String message) {
+        // 🟢 ĐƯA TẤT CẢ VÀO BIẾN MÔI TRƯỜNG
+        String apiKey = getEnvValue("SENDGRID_API_KEY");
+        String fromEmail = getEnvValue("SENDGRID_FROM_EMAIL");
+
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            System.out.println("❌ [LỖI EMAIL] Chưa cấu hình SENDGRID_API_KEY trong file .env!");
+            return;
+        }
+
+        if (fromEmail == null || fromEmail.trim().isEmpty()) {
+            System.out.println("❌ [LỖI EMAIL] Chưa cấu hình SENDGRID_FROM_EMAIL trong file .env!");
+            return;
+        }
+
         try {
             URI uri = URI.create("https://api.sendgrid.com/v3/mail/send");
             URL url = uri.toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Authorization", "Bearer " + API_KEY);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
-            // BƯỚC SỬA LỖI 400: Làm sạch chuỗi, thay thế dấu xuống dòng (\n) thành (\\n) để
-            // JSON không bị vỡ
+            // Xử lý chuỗi an toàn cho JSON
             String safeMessage = message.replace("\"", "\\\"").replace("\n", "\\n");
 
+            // 🟢 SỬ DỤNG fromEmail TỪ BIẾN MÔI TRƯỜNG
             String json = "{"
                     + "\"personalizations\": [{\"to\": [{\"email\": \"" + toEmail + "\"}]}],"
-                    + "\"from\": {\"email\": \"gmail của bạn\"},"
+                    + "\"from\": {\"email\": \"" + fromEmail + "\"},"
                     + "\"subject\": \"" + subject + "\","
                     + "\"content\": [{\"type\": \"text/plain\", \"value\": \"" + safeMessage + "\"}]"
                     + "}";
 
             OutputStream os = conn.getOutputStream();
-            // Ép chuẩn UTF-8 để không bị lỗi font tiếng Việt
             os.write(json.getBytes("UTF-8"));
             os.flush();
             os.close();
 
             int responseCode = conn.getResponseCode();
 
-            if (responseCode == 202) {
-                System.out.println("📧 Email gửi thành công tới " + toEmail);
+            if (responseCode == 202 || responseCode == 200) {
+                System.out.println("📧 [SendGrid] Đã gửi mail thành công tới " + toEmail);
             } else {
-                System.out.println("❌ Gửi email thất bại. Mã lỗi SendGrid: " + responseCode);
-            }
+                System.out.println("❌ [SendGrid] Gửi email thất bại. Mã lỗi: " + responseCode);
 
+                InputStream errorStream = conn.getErrorStream();
+                if (errorStream != null) {
+                    Scanner scanner = new Scanner(errorStream, "UTF-8");
+                    String errorMessage = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+                    System.out.println("   -> Lý do từ máy chủ: " + errorMessage);
+                    scanner.close();
+                }
+            }
             conn.disconnect();
 
         } catch (Exception e) {
+            System.out.println("❌ [Exception] Lỗi hệ thống khi gửi mail: " + e.getMessage());
             e.printStackTrace();
         }
     }

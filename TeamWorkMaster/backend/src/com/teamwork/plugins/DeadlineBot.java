@@ -20,22 +20,21 @@ public class DeadlineBot {
 
         Runnable scanTask = () -> scanAndRemind();
 
-        // 1. Lấy thời gian hiện tại theo múi giờ Việt Nam
+
         java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
 
-        // 2. Đặt mục tiêu là 8 giờ 00 phút 00 giây sáng nay
-        java.time.LocalDateTime nextRun = now.withHour(8).withMinute(0).withSecond(0);
+        
+        java.time.LocalDateTime nextRun = now.withHour(23).withMinute(55).withSecond(0);
 
-        // 3. Nếu bây giờ đã qua 8h sáng, thì dời mục tiêu sang 8h sáng ngày mai
+     
         if (now.compareTo(nextRun) > 0) {
             nextRun = nextRun.plusDays(1);
         }
 
-        // 4. Tính xem từ bây giờ đến mục tiêu còn bao nhiêu PHÚT
+      
         long initialDelay = java.time.temporal.ChronoUnit.MINUTES.between(now, nextRun);
 
-        // 5. Ra lệnh cho Scheduler: Chờ initialDelay phút rồi chạy, sau đó cứ 1440 phút
-        // (24h) chạy 1 lần
+       
         scheduler.scheduleAtFixedRate(scanTask, initialDelay, java.util.concurrent.TimeUnit.DAYS.toMinutes(1),
                 TimeUnit.MINUTES);
 
@@ -47,8 +46,6 @@ public class DeadlineBot {
     private static void scanAndRemind() {
         System.out.println("🔍 [Deadline Bot] Đang quét toàn bộ công việc trong hệ thống...");
 
-        // 🟢 ĐÃ FIX LỖI: Đổi p.Name thành p.ProjectName cho khớp với bảng TBL_PROJECTS
-        // 🟢
         String taskSql = "SELECT t.ID, t.Title, t.Deadline, t.Status, p.ProjectName AS ProjectName, " +
                 "COALESCE((SELECT GROUP_CONCAT(UserID) FROM TBL_TASK_ASSIGNEES WHERE TaskID = t.ID), t.AssigneeID) AS AssigneeIds "
                 +
@@ -69,19 +66,19 @@ public class DeadlineBot {
                 String assigneeIds = rs.getString("AssigneeIds");
                 String projectName = rs.getString("ProjectName");
 
-                // Nếu thẻ này không có ai làm thì bỏ qua không cần thông báo
+              
                 if (assigneeIds == null || assigneeIds.trim().isEmpty()) {
                     continue;
                 }
 
-                // Parse ngày tháng của MySQL (YYYY-MM-DD)
+             
                 LocalDate deadlineDate = LocalDate.parse(deadlineStr);
                 long daysLeft = ChronoUnit.DAYS.between(today, deadlineDate);
 
                 String emailSubject = "";
                 String emailBody = "";
 
-                // Phân tích rủi ro thời gian
+              
                 if (daysLeft < 0) {
                     emailSubject = "[KHẨN CẤP] Trễ hạn công việc - Dự án: " + projectName;
                     emailBody = "Chào bạn,\n\n" +
@@ -111,7 +108,7 @@ public class DeadlineBot {
                             "Trân trọng,\nTeamwork Master System.";
                 }
 
-                // Gửi Email cho danh sách người làm
+              
                 if (!emailSubject.isEmpty()) {
                     String[] userIds = assigneeIds.split(",");
                     for (String uid : userIds) {
@@ -138,10 +135,10 @@ public class DeadlineBot {
                     String email = rs.getString("Email");
                     String fullName = rs.getString("FullName");
 
-                    // Cá nhân hóa nội dung Email
+                   
                     String personalizedMessage = message.replace("Chào bạn", "Chào " + fullName);
 
-                    // Gửi Email
+                  
                     EmailService.sendEmail(email, subject, personalizedMessage);
                     System.out.println("➡️ [Deadline Bot] Đã gửi cảnh báo tới: " + email);
                 }
