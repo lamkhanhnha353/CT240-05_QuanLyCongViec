@@ -12,9 +12,9 @@ import java.io.File;
 
 public class EmailService {
 
-    // 🟢 HÀM ĐỌC GIÁ TRỊ TỪ .env HOẶC HỆ THỐNG
+    // HÀM ĐỌC GIÁ TRỊ TỪ .env HOẶC HỆ THỐNG
     private static String getEnvValue(String key) {
-        // Ưu tiên đọc từ biến môi trường hệ thống trước
+        // Ưu tiên đọc từ biến môi trường 
         if (System.getenv(key) != null) {
             return System.getenv(key);
         }
@@ -37,7 +37,7 @@ public class EmailService {
     }
 
     public static void sendEmail(String toEmail, String subject, String message) {
-        // 🟢 ĐƯA TẤT CẢ VÀO BIẾN MÔI TRƯỜNG
+      
         String apiKey = getEnvValue("SENDGRID_API_KEY");
         String fromEmail = getEnvValue("SENDGRID_FROM_EMAIL");
 
@@ -61,10 +61,10 @@ public class EmailService {
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
 
-            // Xử lý chuỗi an toàn cho JSON
+        
             String safeMessage = message.replace("\"", "\\\"").replace("\n", "\\n");
 
-            // 🟢 SỬ DỤNG fromEmail TỪ BIẾN MÔI TRƯỜNG
+        
             String json = "{"
                     + "\"personalizations\": [{\"to\": [{\"email\": \"" + toEmail + "\"}]}],"
                     + "\"from\": {\"email\": \"" + fromEmail + "\"},"

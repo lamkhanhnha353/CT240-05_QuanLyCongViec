@@ -3,14 +3,6 @@ package com.teamwork.db;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Integration Test cho ProjectDAO và TaskDAO
- *
- * ⚠️ YÊU CẦU: MySQL đang chạy + database teamwork_master đã khởi tạo.
- *
- * Test được sắp xếp theo thứ tự: Tạo Project → Tạo Task → Cập nhật → Xóa
- * để đảm bảo tính liên kết giữa các bước.
- */
 @DisplayName("Integration Tests - ProjectDAO & TaskDAO (cần Database)")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ProjectTaskIntegrationTest {

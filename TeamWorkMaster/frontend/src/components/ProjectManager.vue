@@ -317,7 +317,7 @@ export default {
       this.showMemberModal = true;
     },
     
-    // [MỚI ĐƯỢC CẬP NHẬT] Tương tác API thực tế
+  
     async addMember() {
       if (!this.newMember.userId) return alert("Vui lòng nhập ID người dùng!");
       
@@ -341,7 +341,7 @@ export default {
         if (res.ok) {
           alert(`Đã thêm User ID ${this.newMember.userId} với quyền ${this.newMember.role} thành công!`);
           this.newMember.userId = ''; 
-          // Note: Bước tiếp theo bạn có thể gọi API để refresh lại danh sách "Thành viên hiện tại" ở dưới
+         
         } else {
           alert(`Lỗi: ${result.error}`);
         }
@@ -392,9 +392,7 @@ export default {
 </script>
 
 <style scoped>
-/* ==============================================================
-   CSS XỊN XÒ THEO CHUẨN SAAS (HIỆN ĐẠI, GỌN GÀNG, CHUYÊN NGHIỆP)
-   ============================================================== */
+
 .project-dashboard {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #1e293b;

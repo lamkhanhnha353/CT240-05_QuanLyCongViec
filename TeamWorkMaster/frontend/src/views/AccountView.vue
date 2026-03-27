@@ -217,7 +217,7 @@ onMounted(() => {
   userProfile.value.fullName = localStorage.getItem("fullName") || 'Người dùng';
   userProfile.value.role = localStorage.getItem("role") || 'MEMBER';
   
-  fetchUserProfile(); // Lấy Email thật từ Database
+  fetchUserProfile(); 
 });
 
 const fetchUserProfile = async () => {

@@ -10,7 +10,7 @@ import java.io.File;
 
 public class DatabaseConnection {
 
-    // 🟢 SỬA LỖI 1: THÊM "volatile" ĐỂ ĐẢM BẢO THREAD-SAFE (CHỐNG KẸT XE ĐA LUỒNG)
+
     private static volatile DatabaseConnection instance;
 
     private final String DB_NAME = "teamwork_master";
@@ -25,7 +25,7 @@ public class DatabaseConnection {
             Class.forName("com.mysql.cj.jdbc.Driver");
             System.out.println("[HỆ THỐNG] Nạp thành công Driver MySQL đa luồng!");
 
-            // 🟢 SỬA LỖI 4: TỰ ĐỘNG ĐỌC MẬT KHẨU TỪ FILE .env
+            //  TỰ ĐỘNG ĐỌC MẬT KHẨU TỪ FILE .env
             if (System.getenv("DB_PASSWORD") != null) {
                 this.password = System.getenv("DB_PASSWORD");
                 System.out.println("[BẢO MẬT] Đã lấy mật khẩu từ Biến môi trường Windows!");
@@ -33,12 +33,12 @@ public class DatabaseConnection {
                 try {
                     Properties props = new Properties();
 
-                    // 🟢 CHIẾN THUẬT TÌM KIẾM THÔNG MINH (VS Code hay bị loạn thư mục gốc)
-                    File envFile = new File(".env"); // Lớp 1: Tìm ở ngay chỗ Java đang đứng
+                 
+                    File envFile = new File(".env"); 
                     if (!envFile.exists())
-                        envFile = new File("backend/.env"); // Lớp 2: Tìm sâu vào thư mục backend
+                        envFile = new File("backend/.env"); 
                     if (!envFile.exists())
-                        envFile = new File("TeamWorkMaster/backend/.env"); // Lớp 3: Tìm từ thư mục ngoài cùng
+                        envFile = new File("TeamWorkMaster/backend/.env"); 
 
                     if (envFile.exists()) {
                         props.load(new FileInputStream(envFile));
@@ -58,7 +58,7 @@ public class DatabaseConnection {
         }
     }
 
-    // 🟢 SỬA LỖI 1: KỸ THUẬT DOUBLE-CHECKED LOCKING (CHUẨN ĐIỂM 10)
+  
     public static DatabaseConnection getInstance() {
         if (instance == null) {
             synchronized (DatabaseConnection.class) {
@@ -70,7 +70,7 @@ public class DatabaseConnection {
         return instance;
     }
 
-    // 🟢 ĐÃ SỬA: Mỗi lần gọi là cấp 1 kết nối mới (An toàn tuyệt đối)
+ 
     public Connection getConnection() {
         try {
             return DriverManager.getConnection(URL, USER, this.password);

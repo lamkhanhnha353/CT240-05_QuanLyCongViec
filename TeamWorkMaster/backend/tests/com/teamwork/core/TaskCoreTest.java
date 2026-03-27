@@ -10,9 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit Test cho lớp Task (core.Task)
- *
- * Không cần kết nối Database.
- * Kiểm tra logic nghiệp vụ thuần túy của Task.
+
  */
 @DisplayName("Unit Tests - Task (core.Task)")
 public class TaskCoreTest {

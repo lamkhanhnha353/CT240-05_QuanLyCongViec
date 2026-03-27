@@ -13,20 +13,20 @@ const router = createRouter({
       name: 'register',
       component: () => import('../views/RegisterView.vue')
     },
-    // ==========================================
+  
     // KHU VỰC DÀNH CHO USER BÌNH THƯỜNG
-    // ==========================================
+
     {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true } // Đánh dấu: Trang này cần phải có vé mới được vào
+      meta: { requiresAuth: true }
     },
     {
       path: '/tasks',
       name: 'tasks',
       component: () => import('../views/TaskView.vue')
-    // 👇 THÊM TRANG QUẢN LÝ DỰ ÁN VÀO ĐÂY 👇
+  
     },
     {
       path: '/projects',
@@ -46,9 +46,9 @@ const router = createRouter({
       name: 'account',
       component: AccountView
     },
-    // ==========================================
+   
     // KHU VỰC CẤM - CHỈ DÀNH CHO ADMIN
-    // ==========================================
+   
     {
       path: '/admin',
       component: () => import('../views/AdminView.vue'),
@@ -71,10 +71,7 @@ const router = createRouter({
   ]
 })
 
-// Kiểm tra mọi lượt di chuyển trang
-// ==========================================
-// BÁC BẢO VỆ SIÊU CẤP (Navigation Guards)
-// ==========================================
+
 router.beforeEach((to, from, next) => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   const userRole = localStorage.getItem('role'); // Lấy quyền hạn từ vé

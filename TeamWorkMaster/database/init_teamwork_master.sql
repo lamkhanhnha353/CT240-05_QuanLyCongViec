@@ -200,9 +200,8 @@
         FOREIGN KEY (HostID) REFERENCES TBL_USERS(ID) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-    -- =========================================================================
-    -- 🟢 DỮ LIỆU MẪU BAN ĐẦU (ĐÃ BĂM MẬT KHẨU BẰNG SHA-256)
-    -- =========================================================================
+  
+    --  DỮ LIỆU MẪU BAN ĐẦU (ĐÃ BĂM MẬT KHẨU BẰNG SHA-256)
 
     -- 1. TÀI KHOẢN ADMIN (Mật khẩu: 123456)
     INSERT INTO TBL_USERS (Username, PasswordHash, FullName, Email, Role) 

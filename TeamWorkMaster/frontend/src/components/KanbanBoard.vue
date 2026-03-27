@@ -334,7 +334,6 @@ const searchAssignee = ref("");
 const searchDeadline = ref(""); 
 const searchInput = ref(null);
 
-// 🟢 BIẾN CHO PANEL TRƯỢT & SẮP XẾP & GIỌNG NÓI 🟢
 const showFilters = ref(false);
 const sortBy = ref("");
 const sortDesc = ref(false);
@@ -358,7 +357,7 @@ const kanbanColumns = ref([
 
 const boardTasks = ref({ 'TODO': [], 'IN_PROGRESS': [], 'DONE': [], 'CANCEL': [] });
 
-// 🟢 LOGIC TÌM KIẾM GIỌNG NÓI (NATIVE CHROME API) 🟢
+
 const startVoiceSearch = () => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -389,7 +388,7 @@ const startVoiceSearch = () => {
 const clearFilters = () => { 
   searchQuery.value = ""; searchTag.value = ""; searchAssignee.value = ""; searchDeadline.value = ""; 
   sortBy.value = ""; sortDesc.value = false; applySort(); 
-  showFilters.value = false; // Đóng panel sau khi xóa
+  showFilters.value = false; 
 };
 
 const matchFilter = (task) => {
@@ -415,7 +414,7 @@ const matchFilter = (task) => {
   return matchName && matchTag && matchAssignee && matchDeadline;
 };
 
-// 🟢 LOGIC SẮP XẾP TOÀN CỤC 🟢
+
 const applySort = () => {
   if (!sortBy.value) { fetchTasks(); return; }
 
@@ -556,7 +555,7 @@ const projectMembers = ref([]);
 const pendingMove = ref(null);
 
 // ==========================================
-// 🟢 XỬ LÝ PHÍM TẮT (KEYBOARD SHORTCUTS)
+// XỬ LÝ PHÍM TẮT (KEYBOARD SHORTCUTS)
 // ==========================================
 const handleGlobalKeydown = (e) => {
   // Bấm ESC: Đóng các loại form, popup và bỏ focus ô tìm kiếm
@@ -587,11 +586,11 @@ const handleGlobalKeydown = (e) => {
 onMounted(() => { 
   fetchTasks(); 
   fetchProjectMembers(); 
-  window.addEventListener('keydown', handleGlobalKeydown); // Bật lắng nghe phím
+  window.addEventListener('keydown', handleGlobalKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleGlobalKeydown); // Tắt lắng nghe phím khi thoát trang
+  window.removeEventListener('keydown', handleGlobalKeydown); 
 });
 
 const fetchTasks = async () => {

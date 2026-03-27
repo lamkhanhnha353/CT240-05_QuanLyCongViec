@@ -4,7 +4,7 @@ import java.security.MessageDigest;
 import java.util.Base64;
 
 public class PasswordUtil {
-    // Thêm một "Muối" (Salt) cố định để tăng độ khó giải mã
+    
     private static final String SALT = "TeamworkMaster@2026";
 
     public static String hashPassword(String plainPassword) {

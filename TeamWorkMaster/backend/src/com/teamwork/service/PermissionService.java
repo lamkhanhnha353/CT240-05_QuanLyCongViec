@@ -4,8 +4,7 @@ import com.teamwork.db.ProjectMemberDAO;
 
 public class PermissionService {
 
-    // Kiểm tra OWNER (bao gồm cả trường hợp OWNER chưa được thêm vào bảng
-    // TBL_PROJECT_MEMBERS)
+   
     public boolean isOwner(int userId, int projectId) {
         try {
             Integer ownerId = new com.teamwork.db.ProjectDAO().getOwnerId(projectId);

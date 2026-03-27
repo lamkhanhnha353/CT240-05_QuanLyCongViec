@@ -175,9 +175,6 @@ let timerInterval = null;
 const timeElapsed = ref(0);
 const isTimerRunning = ref(false);
 
-// ==========================================
-// 🟢 LIFECYCLE HOOKS 🟢
-// ==========================================
 onMounted(() => {
   fetchCurrentMeeting();
   fetchMeetingHistory();
@@ -191,9 +188,7 @@ onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
 });
 
-// ==========================================
-// 🟢 API: LẤY DỮ LIỆU PHÒNG HỌP & LỊCH SỬ
-// ==========================================
+
 const fetchCurrentMeeting = async () => {
   try {
     const res = await fetch(`http://localhost:8080/api/meetings?projectId=${props.projectId}&type=current`);
@@ -223,9 +218,7 @@ const fetchMeetingHistory = async () => {
   } catch (error) { console.error("Lỗi lấy lịch sử:", error); }
 };
 
-// ==========================================
-// 🟢 API: ACTIONS CHO MANAGER
-// ==========================================
+
 const startMeeting = async () => {
   if(!meetLinkInput.value) return;
   isStarting.value = true;
@@ -307,9 +300,6 @@ const saveEditNotes = async (meetingId) => {
   finally { isSavingEdit.value = false; }
 };
 
-// ==========================================
-// 🟢 LOGIC BẤM GIỜ & FOMAT THỜI GIAN
-// ==========================================
 const formattedTime = computed(() => {
   const h = Math.floor(timeElapsed.value / 3600).toString().padStart(2, '0');
   const m = Math.floor((timeElapsed.value % 3600) / 60).toString().padStart(2, '0');

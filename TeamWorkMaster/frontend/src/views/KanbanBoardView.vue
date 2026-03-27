@@ -350,10 +350,8 @@ onMounted(() => {
 
 
 const handleOpenTaskFromNotification = (taskName) => {
-  // 1. Chuyển Tab về lại Bảng Công Việc (Kanban)
+ 
   currentTab.value = 'board';
-  
-  // 2. Chờ Kanban load xong (khoảng 100ms) rồi dùng JavaScript cơ bản để giả lập click vào cái thẻ đó
   setTimeout(() => {
   
     const allTaskElements = document.querySelectorAll('.task-card-title'); 

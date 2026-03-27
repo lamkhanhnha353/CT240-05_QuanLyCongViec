@@ -438,7 +438,7 @@ const toggleStar = (id) => {
   localStorage.setItem(`starred_${currentUser.value}`, JSON.stringify(starredProjects.value));
 };
 
-// 🟢 TÍNH TOÁN LỌC, SẮP XẾP
+//  TÍNH TOÁN LỌC, SẮP XẾP
 const filteredProjects = computed(() => {
   let result = projects.value.filter(p => {
     // 1. Tìm kiếm

@@ -156,12 +156,11 @@
 import { ref, onMounted, watch, nextTick, onUnmounted, reactive } from "vue";
 import Chart from 'chart.js/auto';
 import { useRoute } from "vue-router"; 
-// 🟢 Import Component Xuất Excel vừa tạo
 import ExportExcelButton from "./ExportExcelButton.vue"; 
 
 const props = defineProps({ projectId: { type: String, required: true } });
 const route = useRoute(); 
-// 🟢 Lấy tên dự án từ thanh địa chỉ để in ra file Excel
+
 const projectName = ref(route.query.projectName || "Dự án"); 
 
 const isLoading = ref(true);
@@ -177,7 +176,7 @@ const workloadLabels = ref([]);
 const workloadData = ref([]);
 const urgentTasks = ref([]); 
 
-// 🟢 2 Biến lưu trữ dữ liệu thô cho File Excel
+
 const rawTasksList = ref([]);
 const rawMembersList = ref([]);
 
@@ -198,7 +197,7 @@ const fetchData = async () => {
     const tasks = await resTasks.json();
     const members = await resMembers.json();
 
-    // 🟢 Cập nhật dữ liệu cho Excel
+ 
     rawTasksList.value = tasks;
     rawMembersList.value = members;
 

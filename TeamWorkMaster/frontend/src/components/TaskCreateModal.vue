@@ -110,12 +110,11 @@ const taskData = ref({
   startDate: '',
   deadline: '',
   tags: '',
-  targetColumn: 'TODO', // Luôn mặc định là TODO
-  assigneeIds: [] // 🟢 Đổi thành mảng để lưu nhiều ID
+  targetColumn: 'TODO', 
+  assigneeIds: [] 
 });
 
-// --- LOGIC XỬ LÝ NHIỀU NGƯỜI THỰC HIỆN ---
-// Lọc ra những người CHƯA được chọn để đưa vào dropdown
+
 const unassignedMembers = computed(() => {
   return props.projectMembers.filter(member => !taskData.value.assigneeIds.includes(member.id));
 });
@@ -134,7 +133,7 @@ const removeAssignee = (idToRemove) => {
   taskData.value.assigneeIds = taskData.value.assigneeIds.filter(id => id !== idToRemove);
 };
 
-// Lấy tên để hiển thị trên chip
+
 const getMemberName = (id) => {
   const user = props.projectMembers.find(m => m.id === id);
   return user ? user.fullName : 'Unknown';
@@ -146,7 +145,6 @@ const submit = async () => {
     return;
   }
   
-  // 🟢 KIỂM TRA RÀNG BUỘC NGÀY THÁNG TRƯỚC KHI GỬI 🟢
   if (taskData.value.startDate && taskData.value.deadline) {
     const start = new Date(taskData.value.startDate);
     const end = new Date(taskData.value.deadline);
@@ -170,7 +168,7 @@ const submit = async () => {
         deadline: taskData.value.deadline,
         tags: taskData.value.tags,
         targetColumn: taskData.value.targetColumn,
-        // 🟢 ĐÃ CẬP NHẬT: Biến mảng [1, 2] thành chuỗi "1,2" cho Java dễ đọc
+  
         assigneeIds: taskData.value.assigneeIds.join(',') 
       })
     });

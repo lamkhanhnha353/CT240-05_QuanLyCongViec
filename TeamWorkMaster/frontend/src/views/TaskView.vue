@@ -180,7 +180,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 
-// Lệnh Click outside cho dropdown
+
 const vClickOutside = {
   mounted(el, binding) {
     el.clickOutsideEvent = function(event) {
@@ -230,7 +230,7 @@ const handleLogout = () => {
 const fetchMyTasks = async () => {
   loading.value = true;
   try {
-    // 1. MỞ KHÓA CODE GỌI API
+ 
     const userId = localStorage.getItem("userId");
     const response = await fetch(`http://localhost:8080/api/tasks/my-tasks`, { 
       headers: { "User-ID": userId } 
@@ -244,7 +244,7 @@ const fetchMyTasks = async () => {
     
     loading.value = false;
     
-    // 2. XÓA BỎ ĐOẠN DỮ LIỆU GIẢ LẬP (setTimeout) CHỖ NÀY ĐI NHÉ!
+ 
     
   } catch (error) {
     console.error("Lỗi:", error);
@@ -252,7 +252,7 @@ const fetchMyTasks = async () => {
   }
 };
 
-// --- LOGIC TÍNH TOÁN & LỌC ---
+
 const taskStats = computed(() => {
   return {
     total: tasks.value.length,

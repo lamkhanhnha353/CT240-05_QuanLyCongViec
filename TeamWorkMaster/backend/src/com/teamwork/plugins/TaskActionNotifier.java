@@ -7,7 +7,7 @@ import java.sql.ResultSet;
 
 public class TaskActionNotifier {
 
-    // 💥 1. CÓ VIỆC MỚI TỚI TAY (🟢 Đã thêm tham số int projectId)
+   
     public static void notifyNewTask(int projectId, String projectName, String taskTitle, String assigneeIds,
             String assignerName) {
         if (assigneeIds == null || assigneeIds.trim().isEmpty() || assigneeIds.equals("null"))
@@ -24,7 +24,7 @@ public class TaskActionNotifier {
         sendToAssignees(assigneeIds, subject, message, projectId);
     }
 
-    // 💥 2. BÁO CÁO HOÀN THÀNH
+   
     public static void notifyTaskCompleted(int projectId, String taskTitle, int completerId, String completerName) {
         String sql = "SELECT u.ID as OwnerID, u.Email, u.FullName, p.ProjectName FROM TBL_PROJECTS p "
                 + "JOIN TBL_USERS u ON p.OwnerID = u.ID WHERE p.ID = ?";
@@ -54,7 +54,7 @@ public class TaskActionNotifier {
                                 + "Bạn có thể vào hệ thống để kiểm tra nghiệm thu.\n\n"
                                 + "Trân trọng,\nTeamwork Master System.";
 
-                        // 🟢 Gọi qua hàm sendToAssignees để vừa Lưu Chuông Web, vừa Gửi Mail cho Sếp
+                     
                         sendToAssignees(String.valueOf(ownerId), subject, message, projectId);
                     }
                 }
@@ -64,7 +64,7 @@ public class TaskActionNotifier {
         }
     }
 
-    // 💥 3. LÉN ĐỔI DEADLINE (🟢 Đã thêm tham số int projectId)
+
     public static void notifyDeadlineChanged(int projectId, String projectName, String taskTitle, String assigneeIds,
             String oldDeadline, String newDeadline, String changerName) {
         if (assigneeIds == null || assigneeIds.trim().isEmpty() || assigneeIds.equals("null"))
@@ -84,9 +84,7 @@ public class TaskActionNotifier {
         sendToAssignees(assigneeIds, subject, message, projectId);
     }
 
-    // ==========================================
-    // 🟢 HÀM XỬ LÝ LƯU DATABASE VÀ GỬI MAIL (ĐÃ NÂNG CẤP)
-    // ==========================================
+  
     private static void sendToAssignees(String assigneeIds, String subject, String message, int projectId) {
         String sql = "SELECT Email, FullName FROM TBL_USERS WHERE ID = ?";
         String[] ids = assigneeIds.split(",");

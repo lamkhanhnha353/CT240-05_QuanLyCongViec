@@ -4,7 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import com.teamwork.utils.PasswordUtil; // 🟢 Nhúng tiện ích băm mật khẩu
+import com.teamwork.utils.PasswordUtil; 
 
 public class UserDAO {
 
@@ -14,13 +14,13 @@ public class UserDAO {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, username);
-            pstmt.setString(2, PasswordUtil.hashPassword(password)); // 🟢 Băm mật khẩu để so sánh
+            pstmt.setString(2, PasswordUtil.hashPassword(password)); 
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
                 if (!rs.getBoolean("IsActive"))
                     return "BANNED";
-                // ĐÃ TỐI ƯU: Trả về luôn ID, Role và FullName (Ví dụ: "1-ADMIN-Nguyễn Văn A")
+          
                 return rs.getInt("ID") + "-" + rs.getString("Role") + "-" + rs.getString("FullName");
             }
             pstmt.close();
@@ -197,7 +197,7 @@ public class UserDAO {
     // Hàm tìm kiếm người dùng (Auto-suggest)
     public String searchUsers(String keyword) {
         StringBuilder json = new StringBuilder("[");
-        // Tìm kiếm cả Username và Email (Giới hạn 5 người để giao diện không bị tràn)
+      
         String sql = "SELECT ID, Username, Email, FullName FROM TBL_USERS WHERE (Username LIKE ? OR Email LIKE ?) AND IsActive = 1 LIMIT 5";
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -243,9 +243,9 @@ public class UserDAO {
         return "";
     }
 
-    // ==========================================
-    // 🟢 HÀM ĐẶT LẠI MẬT KHẨU (FORGOT PASSWORD)
-    // ==========================================
+   
+    // HÀM ĐẶT LẠI MẬT KHẨU (FORGOT PASSWORD)
+  
     public boolean resetPassword(String email, String newPassword) {
         // Chỉ cho phép lấy lại pass nếu Email tồn tại và tài khoản đang hoạt động
         // (IsActive = 1)
@@ -253,7 +253,7 @@ public class UserDAO {
         try {
             Connection conn = DatabaseConnection.getInstance().getConnection();
             PreparedStatement pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, PasswordUtil.hashPassword(newPassword)); // 🟢 Băm mật khẩu khi đặt lại
+            pstmt.setString(1, PasswordUtil.hashPassword(newPassword)); //  Băm mật khẩu khi đặt lại
             pstmt.setString(2, email);
 
             int rowsAffected = pstmt.executeUpdate();
@@ -266,7 +266,7 @@ public class UserDAO {
         return false;
     }
 
-    // 🟢 LẤY HỒ SƠ ĐỂ HIỂN THỊ EMAIL
+    //  LẤY HỒ SƠ ĐỂ HIỂN THỊ EMAIL
     public String getUserProfile(int userId) {
         String sql = "SELECT Username, FullName, Email, Role FROM TBL_USERS WHERE ID = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -285,20 +285,20 @@ public class UserDAO {
         return null;
     }
 
-    // 🟢 ĐỔI MẬT KHẨU
+    //  ĐỔI MẬT KHẨU
     public boolean changePassword(int userId, String oldPassword, String newPassword) {
         String checkSql = "SELECT ID FROM TBL_USERS WHERE ID = ? AND PasswordHash = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
                 PreparedStatement pstmtCheck = conn.prepareStatement(checkSql)) {
             pstmtCheck.setInt(1, userId);
-            pstmtCheck.setString(2, PasswordUtil.hashPassword(oldPassword)); // 🟢 Băm mật khẩu cũ để so khớp với
-                                                                             // Database
+            pstmtCheck.setString(2, PasswordUtil.hashPassword(oldPassword)); // Băm mật khẩu cũ để so khớp với
+                                                                            
             ResultSet rs = pstmtCheck.executeQuery();
 
             if (rs.next()) { // Nếu pass cũ đúng
                 String updateSql = "UPDATE TBL_USERS SET PasswordHash = ? WHERE ID = ?";
                 try (PreparedStatement pstmtUpdate = conn.prepareStatement(updateSql)) {
-                    pstmtUpdate.setString(1, PasswordUtil.hashPassword(newPassword)); // 🟢 Băm mật khẩu mới khi đổi
+                    pstmtUpdate.setString(1, PasswordUtil.hashPassword(newPassword)); //  Băm mật khẩu mới khi đổi
                     pstmtUpdate.setInt(2, userId);
                     return pstmtUpdate.executeUpdate() > 0;
                 }

@@ -107,7 +107,7 @@ const generateExcel = () => {
   const wb = XLSX.utils.book_new();
 
   // ==========================================
-  // 🟢 HÀM STYLE (THIẾT KẾ LẠI GIAO DIỆN SÁNG SỦA) 🟢
+  //  HÀM STYLE (THIẾT KẾ LẠI GIAO DIỆN SÁNG SỦA) 
   // ==========================================
   const defaultBorderStyle = {
     top: { style: "thin", color: { rgb: "E2E8F0" } }, // Xám rất nhạt
@@ -170,7 +170,7 @@ const generateExcel = () => {
         
         const val = wsDetails[cellAddress].v;
         
-        // 🟢 TÔ MÀU KIỂU PASTEL CHO TRẠNG THÁI (Nền nhạt, chữ đậm)
+        //  TÔ MÀU KIỂU PASTEL CHO TRẠNG THÁI (Nền nhạt, chữ đậm)
         if (C === 2) {
            wsDetails[cellAddress].s.font.bold = true;
            if(val === 'Hoàn thành') {
@@ -192,7 +192,7 @@ const generateExcel = () => {
            wsDetails[cellAddress].s.alignment.horizontal = "center";
         }
         
-        // 🟢 TÔ MÀU KIỂU PASTEL CHO MỨC ĐỘ
+        //  TÔ MÀU KIỂU PASTEL CHO MỨC ĐỘ
         if (C === 3) {
            wsDetails[cellAddress].s.font.bold = true;
            if(val === 'Cao') {

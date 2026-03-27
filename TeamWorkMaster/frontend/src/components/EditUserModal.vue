@@ -57,7 +57,7 @@ const props = defineProps({ user: { type: Object, required: true } })
 const emit = defineEmits(['close', 'refresh'])
 const { addToast } = useToast() // Khởi tạo Toast
 
-// Đã gỡ bỏ oldPassword
+
 const formData = ref({ id: '', username: '', fullname: '', email: '', password: '' })
 const errors = ref({ fullname: '', email: '', password: '' })
 
@@ -79,7 +79,7 @@ const validateEmail = () => {
   errors.value.email = ''; return true;
 }
 
-// Logic mới chỉ kiểm tra độ dài nếu có nhập password mới
+
 const validatePassword = () => {
   if (!formData.value.password) {
     errors.value.password = ''; 

@@ -4,8 +4,7 @@ import java.sql.*;
 
 public class TaskDAO {
 
-    // 🟢 ĐÃ SỬA LẠI: Lấy danh sách công việc (Gom nhóm nhiều người làm bằng
-    // GROUP_CONCAT)
+    
     public String getTasksByProject(int projectId) {
         StringBuilder json = new StringBuilder("[");
         String sql = "SELECT t.ID, t.Title, t.Description, t.Priority, t.Deadline, t.StartDate, t.Tags, t.Status, " +
@@ -54,7 +53,7 @@ public class TaskDAO {
         return json.append("]").toString();
     }
 
-    // 🟢 HÀM CREATE TASK LƯU NHIỀU NGƯỜI (GIỮ NGUYÊN BẢN CẬP NHẬT)
+   
     public boolean createTask(int projectId, String title, String description, String priority, String deadline,
             String startDate, String tags, String status, String assigneeIdsStr) {
 
@@ -116,7 +115,7 @@ public class TaskDAO {
         }
     }
 
-    // 🟢 KHÔNG ĐỔI
+   
     public boolean updateTaskStatus(int taskId, String status) {
         String sql = "UPDATE TBL_TASKS SET Status = ? WHERE ID = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -130,7 +129,7 @@ public class TaskDAO {
         }
     }
 
-    // 🟢 KHÔNG ĐỔI
+ 
     public boolean deleteTask(int taskId) {
         String sql = "DELETE FROM TBL_TASKS WHERE ID = ?";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -143,7 +142,7 @@ public class TaskDAO {
         }
     }
 
-    // 🟢 ĐÃ SỬA LẠI: Hỗ trợ Cập nhật nhiều người, Tags và StartDate 🟢
+  
     public boolean updateTaskDetails(int taskId, String title, String description, String priority, String deadline,
             String startDate, String tags, String assigneeIdsStr) {
 
@@ -201,7 +200,7 @@ public class TaskDAO {
         }
     }
 
-    // 🟢 KHÔNG ĐỔI
+  
     // Lấy thống kê công việc CỦA RIÊNG 1 DỰ ÁN
     public int[] getTaskStatistics(int projectId) {
         int[] stats = new int[3]; // Vị trí 0: TODO, 1: IN_PROGRESS, 2: DONE
@@ -228,9 +227,9 @@ public class TaskDAO {
         return stats;
     }
 
-    // ==========================================
-    // 🟢 CÁC HÀM XỬ LÝ CHECKLIST (SUBTASKS) 🟢
-    // ==========================================
+ 
+    //  CÁC HÀM XỬ LÝ CHECKLIST (SUBTASKS) 
+  
 
     public String getSubtasks(int taskId) {
         StringBuilder json = new StringBuilder("[");
@@ -291,9 +290,9 @@ public class TaskDAO {
         }
     }
 
-    // ==========================================
-    // 🟢 HÀM XỬ LÝ LỊCH SỬ HOẠT ĐỘNG (TASK LOGS) 🟢
-    // ==========================================
+  
+    // HÀM XỬ LÝ LỊCH SỬ HOẠT ĐỘNG (TASK LOGS) 
+   
     public boolean addTaskLog(int taskId, int userId, String action) {
         String sql = "INSERT INTO TBL_TASK_LOGS (TaskID, UserID, Action) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseConnection.getInstance().getConnection();
@@ -344,9 +343,9 @@ public class TaskDAO {
         }
     }
 
-    // ==========================================
-    // 🟢 HÀM XỬ LÝ TÀI LIỆU ĐÍNH KÈM (ATTACHMENTS) 🟢
-    // ==========================================
+    
+    // HÀM XỬ LÝ TÀI LIỆU ĐÍNH KÈM (ATTACHMENTS) 
+  
     public String getTaskAttachments(int taskId) {
         StringBuilder json = new StringBuilder("[");
         String sql = "SELECT a.*, u.FullName FROM TBL_TASK_ATTACHMENTS a LEFT JOIN TBL_USERS u ON a.UserID = u.ID WHERE a.TaskID = ? ORDER BY a.CreatedAt DESC";
@@ -402,9 +401,7 @@ public class TaskDAO {
         return data.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "");
     }
 
-    // ==========================================
-    // 🟢 HÀM MỚI: LẤY DANH SÁCH CÔNG VIỆC CỦA TÔI (MY TASKS) 🟢
-    // ==========================================
+  
     public String getMyTasks(int userId) {
         StringBuilder json = new StringBuilder("[");
 

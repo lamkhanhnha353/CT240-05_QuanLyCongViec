@@ -99,7 +99,7 @@ const notifications = ref([]);
 const isLoading = ref(true);
 let pollingInterval = null;
 
-// 🟢 KHIÊN BẢO VỆ BẰNG LOCALSTORAGE: GHI NHỚ LỊCH SỬ XÓA & ĐỌC MÃI MÃI 🟢
+
 const getLocalSet = (key) => new Set(JSON.parse(localStorage.getItem(key) || '[]'));
 const saveLocalSet = (key, set) => localStorage.setItem(key, JSON.stringify([...set]));
 
@@ -125,7 +125,7 @@ const fetchNotifications = async () => {
         const content = n.content || n.Content || '';
         
         const id = n.id || n.ID;
-        // 🟢 NẾU Backend báo chưa đọc, nhưng LocalStorage báo đọc rồi -> Ép nó thành Đã Đọc
+     
         let isRead = n.isRead !== undefined ? n.isRead : (n.IsRead === 1 || n.IsRead === true);
         isRead = isRead || readIds.value.has(id); 
 
@@ -144,7 +144,7 @@ const fetchNotifications = async () => {
         return { id, title, content, isRead, createdAt, type };
       });
 
-      // 🟢 BỘ LỌC KÉP: Chặn thông báo 'OTHER' VÀ Chặn những thông báo có ID nằm trong sổ đen (deletedIds)
+  
       notifications.value = processedNotifs.filter(n => n.type !== 'OTHER' && !deletedIds.value.has(n.id));
     }
   } catch (error) {
@@ -198,7 +198,7 @@ const markAsRead = async (notif) => {
   if (!notif.isRead) {
     notif.isRead = true; 
     
-    // 🟢 LƯU VÀO SỔ LOCALSTORAGE ĐỂ LẦN TẢI LẠI TRANG (HOẶC 3 GIÂY SAU) NÓ VẪN NHỚ
+
     readIds.value.add(notif.id);
     saveLocalSet('teamwork_read_notifs', readIds.value);
 
@@ -221,11 +221,11 @@ const markAllAsRead = () => {
 };
 
 const deleteNotification = async (id) => { 
-  // 🟢 1. Đưa ID vào sổ đen LocalStorage
+
   deletedIds.value.add(id);
   saveLocalSet('teamwork_deleted_notifs', deletedIds.value);
   
-  // 🟢 2. Xóa khỏi màn hình ngay lập tức
+
   notifications.value = notifications.value.filter(n => n.id !== id); 
   
   try {
@@ -236,10 +236,6 @@ const deleteNotification = async (id) => {
       });
   } catch (e) {}
 };
-
-// ==========================================
-// 🎨 UI HELPERS
-// ==========================================
 
 const getLeftBorderClass = (type) => {
   if (type === 'OVERDUE') return 'border-l-[3px] border-l-red-500';

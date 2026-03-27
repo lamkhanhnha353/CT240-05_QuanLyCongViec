@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: 'class', // BẮT BUỘC PHẢI CÓ DÒNG NÀY (Có dấu phẩy ở cuối)
+  darkMode: 'class', 
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",

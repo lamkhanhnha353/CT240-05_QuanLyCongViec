@@ -240,11 +240,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 
-// 🟢 NHẬN PROP userRole TỪ KANBAN BOARD TRUYỀN XUỐNG 🟢
 const props = defineProps({ 
   task: { type: Object, required: true }, 
   projectMembers: { type: Array, required: true },
-  userRole: { type: String, required: true } // "OWNER", "MANAGER", "MEMBER"
+  userRole: { type: String, required: true }
 });
 
 const emit = defineEmits(['close', 'updated']);
@@ -311,7 +310,7 @@ const deleteSubtask = async (id) => {
 const attachments = ref([]);
 const taskFileInput = ref(null);
 const isUploadingTaskFile = ref(false);
-const newLinkUrl = ref(""); // 🟢 Biến lưu link người dùng dán vào
+const newLinkUrl = ref(""); 
 
 const fetchAttachments = async () => {
   try {
@@ -353,7 +352,7 @@ const handleTaskFileUpload = async (event) => {
   }
 };
 
-// 🟢 HÀM XỬ LÝ GẮN LINK URL TRỰC TIẾP 🟢
+
 const addLinkAttachment = async () => {
   if (!newLinkUrl.value.trim()) return;
   
@@ -413,7 +412,7 @@ const submitEdit = async () => {
     const currentUserId = localStorage.getItem("userId") || 1;
     const payload = { ...taskData.value, taskId: taskData.value.id, assigneeIds: taskData.value.assigneeIds.join(',') };
     
-    // 🟢 Nếu là Member thì KHÔNG GỌI API Sửa Details (Bảo mật 2 lớp) 🟢
+ 
     if (props.userRole !== 'MEMBER') {
        await fetch("http://localhost:8080/api/tasks/update-details", {
          method: 'POST', headers: { 'Content-Type': 'application/json', 'User-ID': currentUserId }, body: JSON.stringify(payload)

@@ -4,16 +4,12 @@ import com.teamwork.contract.IHostContext;
 import com.teamwork.contract.IPlugin;
 import com.teamwork.db.DatabaseConnection;
 import com.teamwork.kernel.PluginLoader;
-// 🟢 IMPORT THƯ VIỆN BOT Ở ĐÂY 🟢
 import com.teamwork.plugins.DeadlineBot;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import javax.swing.*;
 
-/**
- * Container chính của hệ thống (Đóng vai trò là Bảng điều khiển Server).
- */
 public class DashboardFrame extends JFrame implements IHostContext {
     private JTextArea logArea;
     private PluginLoader pluginLoader;
@@ -24,7 +20,6 @@ public class DashboardFrame extends JFrame implements IHostContext {
         log("=== TEAMWORK MASTER CORE SERVER ===");
         log("Hệ thống khởi động thành công. Trạng thái: Sẵn sàng nạp Plugin.");
 
-        // 🟢 ĐÁNH THỨC CON BOT ĐÒI NỢ NGAY KHI SERVER BẬT 🟢
         try {
             log("-> Đang khởi động Deadline Bot (Tiến trình chạy ngầm)...");
             DeadlineBot.startBot();
@@ -38,10 +33,9 @@ public class DashboardFrame extends JFrame implements IHostContext {
         setTitle("TeamWork Master - Server Dashboard");
         setSize(700, 450);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Giữa màn hình
+        setLocationRelativeTo(null); 
         setLayout(new BorderLayout());
 
-        // 1. Hệ thống Menu
         JMenuBar menuBar = new JMenuBar();
         JMenu menuSystem = new JMenu("Hệ thống Quản Trị");
 
@@ -65,7 +59,7 @@ public class DashboardFrame extends JFrame implements IHostContext {
         menuBar.add(menuSystem);
         setJMenuBar(menuBar);
 
-        // 2. Vùng Layout hiển thị Log (Console mô phỏng)
+     
         logArea = new JTextArea();
         logArea.setEditable(false);
         logArea.setFont(new Font("Consolas", Font.PLAIN, 14));
@@ -73,7 +67,7 @@ public class DashboardFrame extends JFrame implements IHostContext {
         logArea.setForeground(Color.GREEN);
         add(new JScrollPane(logArea), BorderLayout.CENTER);
 
-        // 3. Xử lý sự kiện Menu
+     
         itemExit.addActionListener(e -> System.exit(0));
 
         // Sự kiện: Nạp Hello World Plugin
@@ -90,7 +84,7 @@ public class DashboardFrame extends JFrame implements IHostContext {
             }
         });
 
-        // Sự kiện: Nạp Statistics Plugin (Của đồng đội)
+        // Sự kiện: Nạp Statistics Plugin 
         itemLoadStats.addActionListener((ActionEvent e) -> {
             log("-> Đang yêu cầu nạp Plugin Thống kê...");
             pluginLoader.loadPluginClass("com.teamwork.plugins.StatisticsPlugin");
@@ -126,7 +120,7 @@ public class DashboardFrame extends JFrame implements IHostContext {
             }
         });
 
-        // Sự kiện: Nạp Plugin Quản Lý Project (Của bạn)
+      
         itemLoadProject.addActionListener((ActionEvent e) -> {
             log("-> Đang nạp Project Plugin...");
             pluginLoader.loadPluginClass("com.teamwork.plugins.ProjectPlugin");
