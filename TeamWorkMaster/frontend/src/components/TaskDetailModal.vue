@@ -191,14 +191,38 @@
             <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar" id="chatContainer">
                 <div v-if="comments.length === 0" class="text-center text-slate-400 text-sm mt-10">Chưa có bình luận nào. Bắt đầu thảo luận ngay!</div>
                 
-                <div v-for="c in comments" :key="c.id" class="flex flex-col" :class="c.user === currentUserName ? 'items-end' : 'items-start'">
-                  <span class="text-[10px] text-slate-400 font-bold mb-1 px-1">{{ c.user }} • {{ formatChatTime(c.time) }}</span>
-                  <div class="flex flex-col gap-1.5" :class="c.user === currentUserName ? 'items-end' : 'items-start'">
-                    <div v-if="c.content" class="max-w-[280px] md:max-w-md px-4 py-3 text-sm shadow-sm whitespace-pre-wrap break-words" :class="c.user === currentUserName ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-2xl rounded-tl-sm'">{{ c.content.replace(/\\n/g, '\n') }}</div>
-                    <div v-if="c.fileUrl" class="mt-1">
-                      <img v-if="isImage(c.fileUrl)" :src="c.fileUrl" @click="selectedImage = c.fileUrl" class="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 border-2 border-slate-200 dark:border-slate-600 shadow-sm transition-all" />
-                      <a v-else :href="c.fileUrl" target="_blank" class="flex items-center space-x-2 px-4 py-3 rounded-xl text-xs font-bold shadow-sm transition-colors" :class="c.user === currentUserName ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:border-blue-800' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-200'"><span class="text-xl leading-none">📎</span><span class="underline">Tệp đính kèm</span></a>
+                <div v-for="c in comments" :key="c.id" class="flex flex-col group" :class="c.user === currentUserName ? 'items-end' : 'items-start'">
+                  
+                  <div class="mb-1 px-1">
+                     <span class="text-[10px] text-slate-400 font-bold">{{ c.user }} • {{ formatChatTime(c.time) }}</span>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    
+                    <div v-if="c.user === currentUserName && editingCommentId !== c.id" class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 mb-1">
+                        <button @click="startEditComment(c)" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-slate-500 hover:text-blue-600 transition-colors shadow-sm" title="Sửa bình luận">✏️</button>
+                        <button @click="deleteComment(c.id)" class="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50 text-slate-500 hover:text-red-600 transition-colors shadow-sm" title="Xóa bình luận">🗑️</button>
                     </div>
+
+                    <div class="flex flex-col gap-1.5" :class="c.user === currentUserName ? 'items-end' : 'items-start'">
+                      
+                      <div v-if="editingCommentId === c.id" class="w-full max-w-md flex flex-col items-end gap-2 bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl border border-blue-300 dark:border-blue-600 shadow-sm">
+                           <textarea v-model="editCommentText" class="w-full text-slate-800 dark:text-white bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-300 dark:border-slate-600 text-sm outline-none focus:border-blue-500 resize-none custom-scrollbar" rows="2" placeholder="Nhập nội dung mới..."></textarea>
+                           <div class="flex gap-2">
+                               <button @click="cancelEditComment" class="text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-3 py-1.5 transition-colors">Hủy</button>
+                               <button @click="saveEditComment" class="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg shadow-sm transition-colors">Lưu lại</button>
+                           </div>
+                      </div>
+                      
+                      <template v-else>
+                          <div v-if="c.content" class="max-w-[280px] md:max-w-md px-4 py-3 text-sm shadow-sm whitespace-pre-wrap break-words" :class="c.user === currentUserName ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-2xl rounded-tl-sm'">{{ c.content.replace(/\\n/g, '\n') }}</div>
+                          <div v-if="c.fileUrl" class="mt-1">
+                            <img v-if="isImage(c.fileUrl)" :src="c.fileUrl" @click="selectedImage = c.fileUrl" class="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl cursor-pointer hover:opacity-90 border-2 border-slate-200 dark:border-slate-600 shadow-sm transition-all" />
+                            <a v-else :href="c.fileUrl" target="_blank" class="flex items-center space-x-2 px-4 py-3 rounded-xl text-xs font-bold shadow-sm transition-colors" :class="c.user === currentUserName ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:border-blue-800' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-200'"><span class="text-xl leading-none">📎</span><span class="underline">Tệp đính kèm</span></a>
+                          </div>
+                      </template>
+                    </div>
+
                   </div>
                 </div>
             </div>
@@ -358,7 +382,7 @@ const addLinkAttachment = async () => {
   
   let url = newLinkUrl.value.trim();
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url; // Tự động thêm https nếu người dùng gõ thiếu
+    url = 'https://' + url; 
   }
 
   isUploadingTaskFile.value = true;
@@ -366,7 +390,6 @@ const addLinkAttachment = async () => {
   try {
     const userId = localStorage.getItem("userId") || 1;
     
-    // Tự động tạo tên file dựa trên Domain của Link (VD: google.com)
     let domainName = "Liên kết ngoài";
     try { domainName = new URL(url).hostname; } catch(e) {}
 
@@ -375,7 +398,7 @@ const addLinkAttachment = async () => {
       body: JSON.stringify({ taskId: taskData.value.id, fileName: `Link: ${domainName}`, fileUrl: url })
     });
     
-    newLinkUrl.value = ""; // Xóa trắng ô input
+    newLinkUrl.value = ""; 
     fetchAttachments(); 
     fetchTaskLogs();    
   } catch (error) {
@@ -419,7 +442,6 @@ const submitEdit = async () => {
        });
     }
     
-    // Member CHỈ ĐƯỢC gọi API đổi Trạng thái (Status)
     await fetch("http://localhost:8080/api/tasks/update-status", {
       method: "POST", headers: { "Content-Type": "application/json", 'User-ID': currentUserId },
       body: JSON.stringify({ taskId: taskData.value.id, status: taskData.value.status, oldStatus: props.task.status })
@@ -430,7 +452,7 @@ const submitEdit = async () => {
 };
 
 const deleteTask = async () => {
-  if (props.userRole === 'MEMBER') return; // Khóa UI rồi nhưng khóa thêm logic cho chắc
+  if (props.userRole === 'MEMBER') return; 
   if (!confirm("Chắc chắn xóa thẻ này vĩnh viễn?")) return;
   try {
     const res = await fetch("http://localhost:8080/api/tasks/delete", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId: taskData.value.id }) });
@@ -438,7 +460,7 @@ const deleteTask = async () => {
   } catch(e) {}
 };
 
-// BÌNH LUẬN CHAT
+
 const comments = ref([]);
 const newCommentText = ref("");
 const fileInput = ref(null);
@@ -446,16 +468,21 @@ const isUploadingFile = ref(false);
 const uploadedFileUrl = ref("");
 const selectedImage = ref(null);
 
+const editingCommentId = ref(null);
+const editCommentText = ref("");
+
 onMounted(() => { 
   fetchComments(true); 
   fetchSubtasks(); 
   fetchAttachments(); 
   fetchTaskLogs(); 
   pollingInterval = setInterval(() => { 
-    fetchComments(false); 
-    fetchTaskLogs();   
-    fetchSubtasks();   
-    fetchAttachments(); 
+    if (editingCommentId.value === null) {
+      fetchComments(false); 
+      fetchTaskLogs();   
+      fetchSubtasks();   
+      fetchAttachments(); 
+    }
   }, 3000);
 });
 
@@ -499,6 +526,60 @@ const sendComment = async () => {
     await fetch("http://localhost:8080/api/comments", { method: "POST", headers: { "Content-Type": "application/json", "User-ID": userId }, body: JSON.stringify({ taskId: taskData.value.id, content: content, fileUrl: fileUrl }) });
     fetchComments(true); 
   } catch (e) {} 
+};
+
+const startEditComment = (comment) => {
+    editingCommentId.value = comment.id;
+    editCommentText.value = comment.content ? comment.content.replace(/\\n/g, '\n') : "";
+};
+
+const cancelEditComment = () => {
+    editingCommentId.value = null;
+    editCommentText.value = "";
+};
+
+const saveEditComment = async () => {
+    if (!editCommentText.value.trim()) return;
+    try {
+        const userId = localStorage.getItem("userId") || 1;
+        const res = await fetch("http://localhost:8080/api/comments", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", "User-ID": userId },
+            body: JSON.stringify({
+                commentId: editingCommentId.value,
+                content: editCommentText.value.trim()
+            })
+        });
+        
+        if (res.ok) {
+            cancelEditComment();
+            fetchComments(false); 
+        } else {
+            alert("Lỗi: Không thể sửa bình luận này!");
+        }
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+const deleteComment = async (id) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa bình luận này vĩnh viễn?")) return;
+    try {
+        const userId = localStorage.getItem("userId") || 1;
+        const res = await fetch("http://localhost:8080/api/comments", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", "User-ID": userId },
+            body: JSON.stringify({ commentId: id })
+        });
+        
+        if (res.ok) {
+            fetchComments(false); 
+        } else {
+            alert("Lỗi: Không thể xóa bình luận này!");
+        }
+    } catch (e) {
+        console.error(e);
+    }
 };
 
 const isImage = (url) => { return url.match(/\.(jpeg|jpg|gif|png|webp|bmp)(\?.*)?$/i) !== null; };

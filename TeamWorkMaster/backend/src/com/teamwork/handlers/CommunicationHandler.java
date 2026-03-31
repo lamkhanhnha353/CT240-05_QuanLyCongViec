@@ -54,11 +54,39 @@ public class CommunicationHandler extends BaseHandler {
                 else
                     sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Lỗi thêm bình luận\"}");
             }
+    
+            else if ("PUT".equals(method)) {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                int commentId = Integer.parseInt(extract(requestBody, "commentId"));
+                String newContent = extract(requestBody, "content");
+
+                String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
+                int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+                if (userId > 0 && commentDAO.updateComment(commentId, userId, newContent)) {
+                    sendResponse(exchange, 200, "{\"success\": true}");
+                } else {
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Không thể sửa bình luận này\"}");
+                }
+            } else if ("DELETE".equals(method)) {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                int commentId = Integer.parseInt(extract(requestBody, "commentId"));
+
+                String userIdStr = exchange.getRequestHeaders().getFirst("User-ID");
+                int userId = (userIdStr != null && !userIdStr.isEmpty()) ? Integer.parseInt(userIdStr) : 0;
+
+                if (userId > 0 && commentDAO.deleteComment(commentId, userId)) {
+                    sendResponse(exchange, 200, "{\"success\": true}");
+                } else {
+                    sendResponse(exchange, 400, "{\"success\": false, \"message\": \"Không thể xóa bình luận này\"}");
+                }
+            }
         } catch (Exception e) {
             sendResponse(exchange, 500, "{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
         }
     }
 
+  
     public void handleProjectChat(HttpExchange exchange) throws IOException {
         handleCors(exchange);
         String method = exchange.getRequestMethod();

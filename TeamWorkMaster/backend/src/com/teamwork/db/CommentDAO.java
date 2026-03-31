@@ -72,4 +72,36 @@ public class CommentDAO {
             return false;
         }
     }
+
+    public boolean updateComment(int commentId, int userId, String newContent) {
+        String sql = "UPDATE TBL_COMMENTS SET Content = ? WHERE ID = ? AND UserID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, newContent);
+            stmt.setInt(2, commentId);
+            stmt.setInt(3, userId);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[CommentDAO] Lỗi cập nhật bình luận: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteComment(int commentId, int userId) {
+       
+        String sql = "DELETE FROM TBL_COMMENTS WHERE ID = ? AND UserID = ?";
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, commentId);
+            stmt.setInt(2, userId);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[CommentDAO] Lỗi xóa bình luận: " + e.getMessage());
+            return false;
+        }
+    }
 }
